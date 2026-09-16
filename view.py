@@ -9,7 +9,7 @@ def splash_screen():
     pygame.display.set_caption("Laser Tag")
 
     # Load logo
-    logo = pygame.image.load("Assets/logo.jpg")
+    logo = pygame.image.load("Asset/logo.jpg")
 
     # Resize logo
     logo = pygame.transform.scale(logo, (500, 300))
