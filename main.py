@@ -1,10 +1,12 @@
 import pygame
-from view import splash_screen, player_entry_screen
+from view import View
 pygame.init()
 
 # Window setup
 screen = pygame.display.set_mode((800, 600))
 pygame.display.set_caption("Laser Tag")
+
+view = View(screen)
 
 # Music(true) or no music(false)
 music = True
@@ -16,8 +18,8 @@ if music:
 
 # Calls the splash screen for 3 secs
 # Then transitions to the player entry screen
-splash_screen(screen)
-player_entry_screen(screen)
+view.splash_screen()
+view.player_entry_screen()
 
 
 # Main loop to keep the window open
