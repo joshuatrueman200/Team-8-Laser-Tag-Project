@@ -5,7 +5,13 @@ class View():
 
     # Constructor 
     def __init__(self, screen):
+
         self.screen = screen
+        self.current_team = "red"
+        self.row = 0
+        self.col = 0
+        self.red_rows = [{"id": "", "codename": ""} for _ in range(15)]
+        self.green_rows = [{"id": "", "codename": ""} for _ in range(15)]
 
         # Load logo
         self.logo = pygame.image.load("Asset/logo.jpg")
@@ -24,10 +30,11 @@ class View():
         pygame.display.update()
         time.sleep(3)
 
+    # Displays the player entry screen
     def show_player_entry_screen(self):
         self.screen.fill((0, 0, 0))
-        self._draw_panel(50, (255, 0, 0), "RED TEAM")
-        self._draw_panel(450, (0, 205, 0), "GREEN TEAM")
+        self.draw_panel(50, (255, 0, 0), "RED TEAM", self.red_rows, self.current_team == "red")
+        self.draw_panel(450, (0, 205, 0), "GREEN TEAM", self.green_rows, self.current_team == "green")
         self.show_game_controls()
 
     def show_game_screen(self):
@@ -53,10 +60,41 @@ class View():
         elif self.game_screen:
             self.show_game_screen()
 
-    def _draw_panel(self, x, color, label):
+
+    # Draws the panels to write user data
+    def draw_panel(self, x, color, label, rows, is_active):
+        # Title of the panel
         font = pygame.font.Font(None, 24)
         title = font.render(label, True, color)
         self.screen.blit(title, (x, 40))
+
+
+        row_height = 30
+        for i, data in enumerate(rows):
+            y = 80 + i * row_height
+            id_box = pygame.Rect(x, y, 30, row_height - 4)
+            codename_box = pygame.Rect(x + 35, y, 150, row_height - 4)
+
+            # Draw ID Box
+            pygame.draw.rect(self.screen, color, id_box, 1)
+
+            # Draw Codename Box
+            pygame.draw.rect(self.screen, color, codename_box, 1)
+
+            # Checks if there is data to write
+            if data["id"]:
+                id_text = font.render(data["id"], True, (255, 255, 255))
+                self.screen.blit(id_text, (id_box.x + 3, id_box.y + 5))
+            if data["codename"]:
+                codename_text = font.render(data["codename"], True, (255, 255, 255))
+                self.screen.blit(codename_text, (codename_box.x + 3, codename_box.y + 5))
+
+            # Highlights the current cell you are wring on
+            if is_active and i == self.row:
+                highlight_box = id_box if self.col == 0 else codename_box
+                pygame.draw.rect(self.screen, (255, 255, 0), highlight_box.inflate(4, 4), 2)
+
+
 
     #CONTROLS PANEL HERE
     # F5 starts the game
