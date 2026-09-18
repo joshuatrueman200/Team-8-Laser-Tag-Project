@@ -11,29 +11,34 @@ class View():
         self.logo = pygame.image.load("Asset/logo.jpg")
         self.logo = pygame.transform.scale(self.logo, (500, 300))
 
+        # Screens
+        self.splash_screen = True
+        self.player_entry_screen = False
+
     #########################################################################
     # It displays the logo for 3 seconds before going into player ent scr
-    def splash_screen(self):
+    def show_splash_screen(self):
         self.screen.fill((0, 0, 0))
         self.screen.blit(self.logo, (150,150))
         pygame.display.update()
         time.sleep(3)
 
-    #######################################################################
-    # Allows the operator to enter a player ID
-    # retrieve the player's code name from the database
-    # add a new code name if the player ID is not found
-    def player_entry_screen(self):
-         # Clear the splash screen
+    def update(self):
+
+        # show splash screen
+        if self.splash_screen:
+            self.show_splash_screen()
+            self.splash_screen = False
+            self.player_entry_screen = True
+
+        # show player entry screen
+        elif self.player_entry_screen:
             self.screen.fill((0, 0, 0))
+            self._draw_panel(50, (255, 0, 0), "RED TEAM")
+            self._draw_panel(450, (0, 205, 0), "GREEN TEAM")
         
-            # INSERT PLAYER ENTRY SCREEN CODE HERE||
-            # Replace the placeholder code below  \/ with the player entry screen.
-            #######################################################################
-            font = pygame.font.Font(None, 35)
-            text = font.render("INSERT PLAYER ENTRY SCREEN CODE HERE, GOOD LUCK", True, (255, 255, 255))
-            text_rect = text.get_rect(center=(400, 300))
-            self.screen.blit(text, text_rect)
-            #######################################################################
-        
-            pygame.display.update()
+
+    def _draw_panel(self, x, color, label):
+        font = pygame.font.Font(None, 24)
+        title = font.render(label, True, color)
+        self.screen.blit(title, (x, 40))

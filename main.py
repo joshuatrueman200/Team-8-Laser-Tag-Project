@@ -1,12 +1,18 @@
 import pygame
 from view import View
+from model import Model
+from controller import Controller
+
+
 pygame.init()
 
 # Window setup
 screen = pygame.display.set_mode((800, 600))
 pygame.display.set_caption("Laser Tag")
 
+model = Model(None)
 view = View(screen)
+controller = Controller(model, view)
 
 # Music(true) or no music(false)
 music = True
@@ -16,16 +22,17 @@ if music:
     pygame.mixer.music.play(-1, start= 180) # Skips first 3 minutes to get to the goo stuff
 
 
-# Calls the splash screen for 3 secs
-# Then transitions to the player entry screen
-view.splash_screen()
-view.player_entry_screen()
-
-
 # Main loop to keep the window open
 running = True
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        else:
+            controller.handle_event(event)
+
+    controller.update()
+    pygame.display.update()
+
+
 pygame.quit()
