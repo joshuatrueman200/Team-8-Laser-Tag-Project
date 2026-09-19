@@ -45,6 +45,7 @@ class Controller():
             if self.view.col == 0:
                 if event.key == pygame.K_RETURN:
                     if current["id"]:
+                        self.model.check_ID_DB(current["id"])
                         self.view.col = 1
                 elif event.key == pygame.K_BACKSPACE:
                     current["id"] = current["id"][:-1]
@@ -55,6 +56,7 @@ class Controller():
             else: 
                 if event.key == pygame.K_RETURN:
                     if current["codename"]:
+                        self.model.check_Codename_DB(current["codename"])
                         if self.view.row < 14:
                             self.view.row += 1
                         self.view.col = 0

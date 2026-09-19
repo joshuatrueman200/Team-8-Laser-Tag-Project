@@ -10,3 +10,12 @@ class Model():
 
     def __init__(self, db_conection):
         self.db_conection = db_conection
+
+#############################################
+############### DB Connection HERE 
+# Feel free to change the code .- Eduardo
+    def check_ID_DB(self, id):
+        pass
+
+    def check_Codename_DB(self, codename):
+        pass
