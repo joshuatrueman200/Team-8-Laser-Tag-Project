@@ -11,7 +11,7 @@ screen = pygame.display.set_mode((800, 600))
 pygame.display.set_caption("Laser Tag")
 
 model = Model(None)
-view = View(screen)
+view = View(screen, model)
 controller = Controller(model, view)
 
 # Music(true) or no music(false)

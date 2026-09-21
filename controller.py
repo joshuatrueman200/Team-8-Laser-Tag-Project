@@ -21,24 +21,31 @@ class Controller():
 
         ########################################################
         # PLAYER ENTRY SCREEN EVENTS
+
         if self.view.player_entry_screen:
             # Display Game Screen with F5
             if event.type == pygame.KEYDOWN and event.key == pygame.K_F5:
-                if self.view.player_entry_screen:
                     self.view.player_entry_screen = False
                     self.view.game_screen = True
+
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F12:
+                self.model.clear_teams()
+                self.view.row = 0
+                self.view.col = 0
+
+            
 
             # Select which team you want to write on with "."
             if event.unicode == ".":
                 self.view.current_team = "green" if self.view.current_team == "red" else "red"
-                new_rows = self.view.red_rows if self.view.current_team == "red" else self.view.green_rows
+                new_rows = self.model.red_rows if self.view.current_team == "red" else self.model.green_rows
                 self.view.row = self.first_incomplete_row(new_rows)
                 self.view.col = 0
                 return
 
 
 
-            rows = self.view.red_rows if self.view.current_team == "red" else self.view.green_rows
+            rows = self.model.red_rows if self.view.current_team == "red" else self.model.green_rows
             current = rows[self.view.row]
 
             # Type ID

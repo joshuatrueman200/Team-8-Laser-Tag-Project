@@ -4,14 +4,13 @@ import time
 class View():
 
     # Constructor 
-    def __init__(self, screen):
+    def __init__(self, screen, model):
 
         self.screen = screen
+        self.model = model
         self.current_team = "red"
         self.row = 0
         self.col = 0
-        self.red_rows = [{"id": "", "codename": ""} for _ in range(15)]
-        self.green_rows = [{"id": "", "codename": ""} for _ in range(15)]
 
         # Load logo
         self.logo = pygame.image.load("Asset/logo.jpg")
@@ -21,6 +20,10 @@ class View():
         self.splash_screen = True
         self.player_entry_screen = False
         self.game_screen = False
+
+    # GETTERS
+    def get_current_team(self):
+        return self.current_team
 
     #########################################################################
     # It displays the logo for 3 seconds before going into player ent scr
@@ -33,8 +36,8 @@ class View():
     # Displays the player entry screen
     def show_player_entry_screen(self):
         self.screen.fill((0, 0, 0))
-        self.draw_panel(50, (255, 0, 0), "RED TEAM", self.red_rows, self.current_team == "red")
-        self.draw_panel(450, (0, 205, 0), "GREEN TEAM", self.green_rows, self.current_team == "green")
+        self.draw_panel(50, (255, 0, 0), "RED TEAM", self.model.red_rows, self.current_team == "red")
+        self.draw_panel(450, (0, 205, 0), "GREEN TEAM", self.model.green_rows, self.current_team == "green")
         self.show_game_controls()
 
     def show_game_screen(self):

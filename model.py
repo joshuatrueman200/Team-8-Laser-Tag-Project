@@ -10,12 +10,20 @@ class Model():
 
     def __init__(self, db_conection):
         self.db_conection = db_conection
+        self.red_rows = [{"id": "", "codename": ""} for _ in range(15)]
+        self.green_rows = [{"id": "", "codename": ""} for _ in range(15)]
+
+
+    def clear_teams(self):
+        self.red_rows = [{"id": "", "codename": ""} for _ in range(15)]
+        self.green_rows = [{"id": "", "codename": ""} for _ in range(15)]
+        
 
 #############################################
 ############### DB Connection HERE 
 # Feel free to change the code .- Eduardo
     def check_ID_DB(self, id):
-        pass
+        print(id)
 
     def check_Codename_DB(self, codename):
-        pass
+        print(codename)
