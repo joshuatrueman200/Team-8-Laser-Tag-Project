@@ -40,7 +40,8 @@ class Controller():
                 self.view.current_team = "green" if self.view.current_team == "red" else "red"
                 new_rows = self.model.red_rows if self.view.current_team == "red" else self.model.green_rows
                 self.view.row = self.first_incomplete_row(new_rows)
-                self.view.col = 0
+                current = new_rows[self.view.row]
+                self.view.col = 0 if not current["id"] else 1
                 return
 
 

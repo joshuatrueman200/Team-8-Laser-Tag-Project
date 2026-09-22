@@ -38,6 +38,7 @@ class View():
         self.screen.fill((0, 0, 0))
         self.draw_panel(50, (255, 0, 0), "RED TEAM", self.model.red_rows, self.current_team == "red")
         self.draw_panel(450, (0, 205, 0), "GREEN TEAM", self.model.green_rows, self.current_team == "green")
+        self.draw_instructions()
         self.show_game_controls()
 
     def show_game_screen(self):
@@ -96,6 +97,31 @@ class View():
             if is_active and i == self.row:
                 highlight_box = id_box if self.col == 0 else codename_box
                 pygame.draw.rect(self.screen, (255, 255, 0), highlight_box.inflate(4, 4), 2)
+
+    def draw_instructions(self):
+        font = pygame.font.Font(None, 20)
+
+        if self.col == 0:
+            lines = [
+                "Write your Player ID",
+                "and press ENTER to confirm."
+            ]
+        else:
+            lines = [
+                "Write your Codename",
+                "and press ENTER to confirm."
+            ]
+
+        lines += ["", "Press '.' to", "switch team"]
+
+        x_center = 342
+        y = 200
+
+        for line in lines:
+            text = font.render(line, True, (255, 255, 255))
+            text_rect = text.get_rect(center=(x_center, y))
+            self.screen.blit(text, text_rect)
+            y += 25
 
 
 
