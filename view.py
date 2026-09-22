@@ -20,6 +20,11 @@ class View():
         self.splash_screen = True
         self.player_entry_screen = False
         self.game_screen = False
+        self.network_screen = False
+        self.network_source = "127.0.0.1"
+        self.network_destination = "127.0.0.1"
+        self.network_field = 0
+        self.status = ""
 
     # GETTERS
     def get_current_team(self):
@@ -48,6 +53,23 @@ class View():
         title_rect = title.get_rect(center=self.screen.get_rect().center)
         self.screen.blit(title, title_rect)
 
+    def show_network_screen(self):
+        self.screen.fill((0, 0, 0))
+        font = pygame.font.Font(None, 32)
+        lines = ["UDP Network (F9)",
+                 f"Source IP: {self.network_source}" + (" <" if self.network_field == 0 else ""),
+                 f"Destination/Broadcast IP: {self.network_destination}" + (" <" if self.network_field == 1 else ""),
+                 "TAB: switch field   ENTER: save   ESC: cancel",
+                 "Local test: 127.0.0.1 -> 127.0.0.1"]
+        for i, line in enumerate(lines):
+            self.screen.blit(font.render(line, True, (255, 255, 255)), (55, 100 + i * 65))
+        self.draw_status()
+
+    def draw_status(self):
+        if self.status:
+            font = pygame.font.Font(None, 22)
+            self.screen.blit(font.render(self.status[:95], True, (255, 255, 0)), (80, 565))
+
     def update(self):
 
         # show splash screen
@@ -57,8 +79,12 @@ class View():
             self.player_entry_screen = True
 
         # show player entry screen
+        elif self.network_screen:
+            self.show_network_screen()
+
         elif self.player_entry_screen:
             self.show_player_entry_screen()
+            self.draw_status()
 
         # show game screen
         elif self.game_screen:
@@ -131,6 +157,7 @@ class View():
     def show_game_controls(self):
         controls =(
             (10, ("F5", "Start", "Game")),
+            (self.screen.get_width() - 125, ("F9", "UDP", "Network")),
             (self.screen.get_width() - 60, ("F12", "Clear", "Game")),
         )
 
