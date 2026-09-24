@@ -1,4 +1,5 @@
 import pygame
+from udp_manager import UDPManager
 
 class Controller():
 
@@ -6,6 +7,12 @@ class Controller():
     def __init__(self, model, view):
         self.model = model
         self.view = view
+        self.udp = UDPManager()
+        self.added_rows = set()
+        self.network_field = 0
+        self.network_source = self.udp.source_ip
+        self.network_destination = self.udp.destination_ip
+        self.status = ""
 
     # Looks for the first row with no data
     def first_incomplete_row(self, rows):
@@ -21,8 +28,41 @@ class Controller():
 
         ########################################################
         # PLAYER ENTRY SCREEN EVENTS
+        if self.view.network_screen:
+            if event.key == pygame.K_ESCAPE:
+                self.view.network_screen = False
+                return
+            if event.key == pygame.K_TAB:
+                self.network_field = 1 - self.network_field
+                return
+            if event.key == pygame.K_RETURN:
+                try:
+                    self.udp.change_network(self.network_source, self.network_destination)
+                except (ValueError, OSError) as error:
+                    self.status = f"Network error: {error}"
+                else:
+                    self.status = f"UDP: {self.udp.source_ip} -> {self.udp.destination_ip}:7500"
+                    self.view.network_screen = False
+                return
+            value = self.network_source if self.network_field == 0 else self.network_destination
+            if event.key == pygame.K_BACKSPACE:
+                value = value[:-1]
+            elif event.unicode in "0123456789.":
+                value += event.unicode
+            if self.network_field == 0:
+                self.network_source = value
+            else:
+                self.network_destination = value
+            return
+
 
         if self.view.player_entry_screen:
+            if event.key == pygame.K_F9:
+                self.network_source = self.udp.source_ip
+                self.network_destination = self.udp.destination_ip
+                self.network_field = 0
+                self.view.network_screen = True
+                return
             # Display Game Screen with F5
             if event.type == pygame.KEYDOWN and event.key == pygame.K_F5:
                     self.view.player_entry_screen = False
@@ -30,6 +70,7 @@ class Controller():
 
             if event.type == pygame.KEYDOWN and event.key == pygame.K_F12:
                 self.model.clear_teams()
+                self.added_rows.clear()
                 self.view.row = 0
                 self.view.col = 0
 
@@ -65,6 +106,15 @@ class Controller():
                 if event.key == pygame.K_RETURN:
                     if current["codename"]:
                         self.model.check_Codename_DB(current["codename"])
+                        key = (self.view.current_team, self.view.row)
+                        if key not in self.added_rows:
+                            try:
+                                self.udp.broadcast_equipment_code(current["id"])
+                            except OSError as error:
+                                self.status = f"UDP send failed: {error}"
+                            else:
+                                self.added_rows.add(key)
+                                self.status = f"Sent Entry {current['id']} to IP {self.udp.destination_ip} using Port:7500"
                         if self.view.row < 14:
                             self.view.row += 1
                         self.view.col = 0
@@ -76,4 +126,13 @@ class Controller():
             
 
     def update(self):
+        for data, address in self.udp.receive_messages():
+            print(f"UDP received from {address}: {data!r}")
+        self.view.network_source = self.network_source
+        self.view.network_destination = self.network_destination
+        self.view.network_field = self.network_field
+        self.view.status = self.status
         self.view.update()
+
+    def close(self):
+        self.udp.close()

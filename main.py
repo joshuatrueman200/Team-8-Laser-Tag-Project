@@ -35,4 +35,5 @@ while running:
     pygame.display.update()
 
 
+controller.close()
 pygame.quit()
