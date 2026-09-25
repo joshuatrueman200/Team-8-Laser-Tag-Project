@@ -1,0 +1,28 @@
+import os
+from contextlib import closing
+
+import psycopg2
+
+
+class PlayerDatabaseError(Exception):
+    pass
+
+
+class PlayerDatabase:
+    def add_player(self, player_id, codename):
+        database_name = os.environ.get("PGDATABASE", "photon")
+        try:
+            with closing(psycopg2.connect(dbname=database_name)) as connection:
+                with connection:
+                    with connection.cursor() as cursor:
+                        cursor.execute(
+                            """
+                            INSERT INTO public.players (id, codename)
+                            VALUES (%s, %s)
+                            RETURNING id, codename;
+                            """,
+                            (player_id, codename),
+                        )
+                        return cursor.fetchone()
+        except psycopg2.Error as error:
+            raise PlayerDatabaseError(str(error)) from error

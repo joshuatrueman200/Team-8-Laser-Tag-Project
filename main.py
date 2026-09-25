@@ -2,6 +2,7 @@ import pygame
 from view import View
 from model import Model
 from controller import Controller
+from database import PlayerDatabase
 
 
 pygame.init()
@@ -10,7 +11,7 @@ pygame.init()
 screen = pygame.display.set_mode((800, 600))
 pygame.display.set_caption("Laser Tag")
 
-model = Model(None)
+model = Model(PlayerDatabase())
 view = View(screen, model)
 controller = Controller(model, view)
 

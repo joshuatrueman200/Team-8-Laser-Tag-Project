@@ -1,4 +1,5 @@
 import pygame
+from database import PlayerDatabaseError
 from udp_manager import UDPManager
 
 class Controller():
@@ -73,6 +74,11 @@ class Controller():
                 self.added_rows.clear()
                 self.view.row = 0
                 self.view.col = 0
+                self.status = "Roster cleared from screen only; database unchanged"
+
+            if event.key == pygame.K_TAB:
+                self.view.col = 1 - self.view.col
+                return
 
             
 
@@ -94,7 +100,6 @@ class Controller():
             if self.view.col == 0:
                 if event.key == pygame.K_RETURN:
                     if current["id"]:
-                        self.model.check_ID_DB(current["id"])
                         self.view.col = 1
                 elif event.key == pygame.K_BACKSPACE:
                     current["id"] = current["id"][:-1]
@@ -104,17 +109,22 @@ class Controller():
             # Type Code Name
             else: 
                 if event.key == pygame.K_RETURN:
-                    if current["codename"]:
-                        self.model.check_Codename_DB(current["codename"])
+                    if current["id"] and current["codename"]:
                         key = (self.view.current_team, self.view.row)
                         if key not in self.added_rows:
                             try:
+                                self.model.add_player(current["id"], current["codename"])
+                            except PlayerDatabaseError as error:
+                                self.status = f"Database save failed: {error}"
+                                return
+                            self.added_rows.add(key)
+                            self.status = f"Saved player {current['id']} ({current['codename']}) to database"
+                            try:
                                 self.udp.broadcast_equipment_code(current["id"])
                             except OSError as error:
-                                self.status = f"UDP send failed: {error}"
+                                self.status += f"; UDP send failed: {error}"
                             else:
-                                self.added_rows.add(key)
-                                self.status = f"Sent Entry {current['id']} to IP {self.udp.destination_ip} using Port:7500"
+                                self.status += f"; sent to {self.udp.destination_ip}:7500"
                         if self.view.row < 14:
                             self.view.row += 1
                         self.view.col = 0

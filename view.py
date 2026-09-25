@@ -130,12 +130,14 @@ class View():
         if self.col == 0:
             lines = [
                 "Write your Player ID",
-                "and press ENTER to confirm."
+                "TAB or ENTER moves to",
+                "the codename field."
             ]
         else:
             lines = [
                 "Write your Codename",
-                "and press ENTER to confirm."
+                "TAB returns to the ID.",
+                "ENTER saves the player."
             ]
 
         lines += ["", "Press '.' to", "switch team"]
