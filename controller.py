@@ -10,8 +10,9 @@ class Controller():
         self.view = view
         self.udp = UDPManager()
         self.added_rows = {
-            ("red", index)
-            for index, data in enumerate(self.model.red_rows)
+            (team, index)
+            for team, rows in (("red", model.red_rows), ("green", model.green_rows))
+            for index, data in enumerate(rows)
             if data["id"] and data["codename"]
         }
         self.network_field = 0
@@ -117,12 +118,23 @@ class Controller():
                         key = (self.view.current_team, self.view.row)
                         if key not in self.added_rows:
                             try:
-                                self.model.add_player(current["id"], current["codename"])
+                                is_new_player = self.model.add_player(
+                                    current["id"], current["codename"], self.view.current_team
+                                )
                             except PlayerDatabaseError as error:
                                 self.status = f"Database save failed: {error}"
                                 return
                             self.added_rows.add(key)
-                            self.status = f"Saved player {current['id']} ({current['codename']}) to database"
+                            if is_new_player:
+                                self.status = (
+                                    f"Saved player {current['id']} ({current['codename']}) "
+                                    f"to database and assigned to {self.view.current_team}"
+                                )
+                            else:
+                                self.status = (
+                                    f"Assigned player {current['id']} ({current['codename']}) "
+                                    f"to {self.view.current_team}"
+                                )
                             try:
                                 self.udp.broadcast_equipment_code(current["id"])
                             except OSError as error:
