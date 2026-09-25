@@ -9,6 +9,19 @@ class PlayerDatabaseError(Exception):
 
 
 class PlayerDatabase:
+    def get_players(self):
+        database_name = os.environ.get("PGDATABASE", "photon")
+        try:
+            with closing(psycopg2.connect(dbname=database_name)) as connection:
+                with connection:
+                    with connection.cursor() as cursor:
+                        cursor.execute(
+                            "SELECT id, codename FROM public.players ORDER BY id;"
+                        )
+                        return cursor.fetchall()
+        except psycopg2.Error as error:
+            raise PlayerDatabaseError(str(error)) from error
+
     def add_player(self, player_id, codename):
         database_name = os.environ.get("PGDATABASE", "photon")
         try:

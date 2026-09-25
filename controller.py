@@ -9,7 +9,11 @@ class Controller():
         self.model = model
         self.view = view
         self.udp = UDPManager()
-        self.added_rows = set()
+        self.added_rows = {
+            ("red", index)
+            for index, data in enumerate(self.model.red_rows)
+            if data["id"] and data["codename"]
+        }
         self.network_field = 0
         self.network_source = self.udp.source_ip
         self.network_destination = self.udp.destination_ip

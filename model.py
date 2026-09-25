@@ -4,6 +4,10 @@ class Model():
         self.player_database = player_database
         self.red_rows = [{"id": "", "codename": ""} for _ in range(15)]
         self.green_rows = [{"id": "", "codename": ""} for _ in range(15)]
+        for index, (player_id, codename) in enumerate(self.player_database.get_players()):
+            if index >= len(self.red_rows):
+                break
+            self.red_rows[index] = {"id": str(player_id), "codename": codename}
 
 
     def clear_teams(self):
