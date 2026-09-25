@@ -140,7 +140,13 @@ class View():
                 "ENTER saves the player."
             ]
 
-        lines += ["", "Press '.' to", "switch team"]
+        lines += [
+            "",
+            "UP/DOWN selects a row",
+            "DELETE removes saved player",
+            "Y confirms, N cancels",
+            "Press '.' to switch team",
+        ]
 
         x_center = 342
         y = 200

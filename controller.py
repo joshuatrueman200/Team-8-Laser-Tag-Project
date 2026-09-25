@@ -19,6 +19,7 @@ class Controller():
         self.network_source = self.udp.source_ip
         self.network_destination = self.udp.destination_ip
         self.status = ""
+        self.pending_delete = None
 
     # Looks for the first row with no data
     def first_incomplete_row(self, rows):
@@ -63,6 +64,29 @@ class Controller():
 
 
         if self.view.player_entry_screen:
+            if self.pending_delete is not None:
+                if event.key == pygame.K_y:
+                    player_id = self.pending_delete
+                    try:
+                        deleted_player = self.model.delete_player(player_id)
+                    except PlayerDatabaseError as error:
+                        self.status = f"Database delete failed: {error}"
+                    else:
+                        self.added_rows = {
+                            (team, index)
+                            for team, rows in (("red", self.model.red_rows), ("green", self.model.green_rows))
+                            for index, data in enumerate(rows)
+                            if data["id"] and data["codename"]
+                        }
+                        self.status = (
+                            f"Deleted player {deleted_player[0]} ({deleted_player[1]}) from database"
+                        )
+                    self.pending_delete = None
+                elif event.key in (pygame.K_n, pygame.K_ESCAPE):
+                    self.pending_delete = None
+                    self.status = "Delete cancelled"
+                return
+
             if event.key == pygame.K_F9:
                 self.network_source = self.udp.source_ip
                 self.network_destination = self.udp.destination_ip
@@ -80,6 +104,24 @@ class Controller():
                 self.view.row = 0
                 self.view.col = 0
                 self.status = "Roster cleared from screen only; database unchanged"
+
+            if event.key == pygame.K_UP:
+                self.view.row = max(0, self.view.row - 1)
+                return
+            if event.key == pygame.K_DOWN:
+                self.view.row = min(14, self.view.row + 1)
+                return
+            if event.key == pygame.K_DELETE:
+                rows = self.model.red_rows if self.view.current_team == "red" else self.model.green_rows
+                current = rows[self.view.row]
+                if current["id"] and current["codename"]:
+                    self.pending_delete = current["id"]
+                    self.status = (
+                        f"Delete {current['id']} ({current['codename']}) from database? Y/N"
+                    )
+                else:
+                    self.status = "Select a saved player to delete"
+                return
 
             if event.key == pygame.K_TAB:
                 self.view.col = 1 - self.view.col

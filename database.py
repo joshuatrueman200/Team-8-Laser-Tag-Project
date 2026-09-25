@@ -39,3 +39,17 @@ class PlayerDatabase:
                         return cursor.fetchone()
         except psycopg2.Error as error:
             raise PlayerDatabaseError(str(error)) from error
+
+    def delete_player(self, player_id):
+        database_name = os.environ.get("PGDATABASE", "photon")
+        try:
+            with closing(psycopg2.connect(dbname=database_name)) as connection:
+                with connection:
+                    with connection.cursor() as cursor:
+                        cursor.execute(
+                            "DELETE FROM public.players WHERE id = %s RETURNING id, codename;",
+                            (player_id,),
+                        )
+                        return cursor.fetchone()
+        except psycopg2.Error as error:
+            raise PlayerDatabaseError(str(error)) from error

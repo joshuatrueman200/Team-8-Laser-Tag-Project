@@ -45,3 +45,19 @@ class Model():
                 other_rows[index] = {"id": "", "codename": ""}
 
         return is_new_player
+
+    def delete_player(self, player_id):
+        player_id = str(player_id)
+        if player_id not in self.database_players:
+            raise PlayerDatabaseError(f"Player ID {player_id} is not saved in the database")
+
+        deleted_player = self.player_database.delete_player(player_id)
+        if deleted_player is None:
+            raise PlayerDatabaseError(f"Player ID {player_id} was not found in the database")
+
+        self.database_players.pop(player_id, None)
+        for rows in (self.red_rows, self.green_rows):
+            for index, data in enumerate(rows):
+                if data["id"] == player_id:
+                    rows[index] = {"id": "", "codename": ""}
+        return deleted_player
