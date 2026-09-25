@@ -140,13 +140,7 @@ class View():
                 "ENTER saves the player."
             ]
 
-        lines += [
-            "",
-            "UP/DOWN selects a row",
-            "DELETE removes saved player",
-            "Y confirms, N cancels",
-            "Press '.' to switch team",
-        ]
+        lines += ["", "Press '.' to", "switch team"]
 
         x_center = 342
         y = 200
@@ -165,6 +159,7 @@ class View():
     def show_game_controls(self):
         controls =(
             (10, ("F5", "Start", "Game")),
+            (self.screen.get_width() - 185, ("DEL", "Delete", "Player")),
             (self.screen.get_width() - 125, ("F9", "UDP", "Network")),
             (self.screen.get_width() - 60, ("F12", "Clear", "Game")),
         )
