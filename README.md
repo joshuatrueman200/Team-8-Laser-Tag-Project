@@ -7,6 +7,8 @@
 - The existing PostgreSQL `photon` database and `public.players` table.
 - GitHub access on the Windows host. Git is not needed inside the VM.
 
+The VM account is `student` with password `student`.
+
 ## Set up the shared folder once
 
 1. On the Windows host, download the `Joshua` branch ZIP into a folder you can find.
@@ -25,13 +27,13 @@ You should see `Team-8-Laser-Tag-Project-Joshua.zip` in the output.
 
 ### If you see "Permission denied"
 
-Run this once in the VM terminal:
+Run this once in the VM terminal (the VM account name is `student`):
 
 ```bash
 sudo usermod -aG vboxsf "$USER"
 ```
 
-Enter your VM account password if `sudo` asks; the characters will not appear as you type. Then log out of the VM desktop and log back in (or reboot) so the new group membership takes effect. Try the `ls` check again. If the `vboxsf` group does not exist, VirtualBox Guest Additions may not be installed or running.
+When prompted, enter the VM account password `student` manually; the characters will not appear as you type. The password prompt cannot be safely automated here. Then log out of the VM desktop and log back in (or reboot) so the new group membership takes effect. Try the `ls` check again. If the `vboxsf` group does not exist, VirtualBox Guest Additions may not be installed or running.
 
 ## Extract, install, and run
 
@@ -61,4 +63,14 @@ psql -d photon -c "SELECT id, codename FROM public.players ORDER BY id;"
 ## Later ZIP downloads
 
 Put the new ZIP in the same Windows folder. It will appear in the VM shared folder automatically; you do not need to shut down the VM again.
+
+## Team members
+
+| GitHub username | Real name |
+| --- | --- |
+| `xXJ02HXx` | Joshua Rivas |
+| `leduarcev17Eduardo` | Arce Vargas |
+| `ChillMark` | Mark Freeman |
+| `ajd035776` | Alex D'Agostino |
+| `JoshuaTrueman200` | Joshua Trueman |
 

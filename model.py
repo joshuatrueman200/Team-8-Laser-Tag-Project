@@ -11,11 +11,13 @@ class Model:
         self.red_rows = self._empty_team()
         self.green_rows = self._empty_team()
         self.database_players = {}
-        for index, (player_id, codename) in enumerate(self.player_database.get_players()):
+        visible_index = 0
+        for player_id, codename in self.player_database.get_players():
             player_id = str(player_id)
             self.database_players[player_id] = codename
-            if index < len(self.red_rows):
-                self.red_rows[index] = {"id": player_id, "codename": codename}
+            if player_id and codename and visible_index < len(self.red_rows):
+                self.red_rows[visible_index] = {"id": player_id, "codename": codename}
+                visible_index += 1
 
     @staticmethod
     def _empty_team():
@@ -27,20 +29,30 @@ class Model:
         self.red_rows = self._empty_team()
         self.green_rows = self._empty_team()
 
+    def get_codename(self, player_id):
+        player_id = str(player_id)
+        player = self.player_database.get_player(player_id)
+        if player is None:
+            self.database_players.pop(player_id, None)
+            return None
+
+        saved_id, codename = player
+        saved_id = str(saved_id)
+        self.database_players[saved_id] = codename
+        return codename
+
     def add_player(self, player_id, codename, team):
         player_id = str(player_id)
         if team not in ("red", "green"):
             raise ValueError(f"Unknown team: {team}")
 
         existing_codename = self.database_players.get(player_id)
-        is_new_player = existing_codename is None
-        if not is_new_player and existing_codename != codename:
-            raise PlayerDatabaseError(
-                f"Player ID {player_id} is already registered as {existing_codename}"
-            )
+        is_new_player = player_id not in self.database_players
         if is_new_player:
             self.player_database.add_player(player_id, codename)
-            self.database_players[player_id] = codename
+        elif existing_codename != codename:
+            self.player_database.update_codename(player_id, codename)
+        self.database_players[player_id] = codename
 
         # Keep a player on just one team.
         if team == "red":
@@ -52,6 +64,17 @@ class Model:
                 other_rows[index] = {"id": "", "codename": ""}
 
         return is_new_player
+
+    def clear_codenames(self):
+        cleared_players = self.player_database.clear_codenames()
+        for player_id, _ in cleared_players:
+            player_id = str(player_id)
+            self.database_players[player_id] = ""
+            for rows in (self.red_rows, self.green_rows):
+                for data in rows:
+                    if data["id"] == player_id:
+                        data["codename"] = ""
+        return len(cleared_players)
 
     def delete_player(self, player_id):
         # Delete from the database before clearing the screen.

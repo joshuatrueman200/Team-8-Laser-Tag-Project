@@ -110,7 +110,12 @@ class Controller:
                 self.added_rows.clear()
                 self.view.row = 0
                 self.view.col = 0
-                self.status = "Roster cleared from screen only; database unchanged"
+                try:
+                    count = self.model.clear_codenames()
+                except PlayerDatabaseError as error:
+                    self.status = f"Game cleared; database names not cleared: {error}"
+                else:
+                    self.status = f"Game cleared; names cleared for {count} IDs kept in database"
                 return
 
             if event.key == pygame.K_UP:
@@ -153,6 +158,11 @@ class Controller:
             if self.view.col == 0:
                 if event.key == pygame.K_RETURN:
                     if current["id"]:
+                        try:
+                            current["codename"] = self.model.get_codename(current["id"]) or ""
+                        except PlayerDatabaseError as error:
+                            self.status = f"Database lookup failed: {error}"
+                            return
                         self.view.col = 1
                 elif event.key == pygame.K_BACKSPACE:
                     current["id"] = current["id"][:-1]
@@ -164,7 +174,8 @@ class Controller:
                 if event.key == pygame.K_RETURN:
                     if current["id"] and current["codename"]:
                         key = (self.view.current_team, self.view.row)
-                        if key not in self.added_rows:
+                        previous_codename = self.model.database_players.get(current["id"])
+                        if key not in self.added_rows or previous_codename != current["codename"]:
                             try:
                                 is_new_player = self.model.add_player(
                                     current["id"], current["codename"], self.view.current_team
@@ -177,6 +188,11 @@ class Controller:
                                 self.status = (
                                     f"Saved player {current['id']} ({current['codename']}) "
                                     f"to database and assigned to {self.view.current_team}"
+                                )
+                            elif previous_codename != current["codename"]:
+                                self.status = (
+                                    f"Updated player {current['id']} to ({current['codename']}) "
+                                    f"and assigned to {self.view.current_team}"
                                 )
                             else:
                                 self.status = (

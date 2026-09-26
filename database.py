@@ -30,6 +30,13 @@ class PlayerDatabase:
             fetch_all=True,
         )
 
+    # Look up one player's current codename by ID.
+    def get_player(self, player_id):
+        return self._query(
+            "SELECT id, codename FROM public.players WHERE id = %s;",
+            (player_id,),
+        )
+
     # Save one new player and return the saved row.
     def add_player(self, player_id, codename):
         return self._query(
@@ -39,6 +46,20 @@ class PlayerDatabase:
             RETURNING id, codename;
             """,
             (player_id, codename),
+        )
+
+    # Change a saved player's codename without changing their ID.
+    def update_codename(self, player_id, codename):
+        return self._query(
+            "UPDATE public.players SET codename = %s WHERE id = %s RETURNING id, codename;",
+            (codename, player_id),
+        )
+
+    # Clear names while preserving every saved player ID.
+    def clear_codenames(self):
+        return self._query(
+            "UPDATE public.players SET codename = '' RETURNING id;",
+            fetch_all=True,
         )
 
     # Delete one player and return the row that got deleted.
