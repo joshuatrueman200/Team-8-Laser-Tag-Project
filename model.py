@@ -1,25 +1,31 @@
 from database import PlayerDatabaseError
 
+TEAM_SIZE = 15
 
-class Model():
+
+class Model:
+    # Hold the team lists and talk to the database.
 
     def __init__(self, player_database):
         self.player_database = player_database
-        self.red_rows = [{"id": "", "codename": ""} for _ in range(15)]
-        self.green_rows = [{"id": "", "codename": ""} for _ in range(15)]
+        self.red_rows = self._empty_team()
+        self.green_rows = self._empty_team()
         self.database_players = {}
         for index, (player_id, codename) in enumerate(self.player_database.get_players()):
-            if index >= len(self.red_rows):
-                break
             player_id = str(player_id)
             self.database_players[player_id] = codename
-            self.red_rows[index] = {"id": player_id, "codename": codename}
+            if index < len(self.red_rows):
+                self.red_rows[index] = {"id": player_id, "codename": codename}
 
+    @staticmethod
+    def _empty_team():
+        # Give each team 15 blank spots.
+        return [{"id": "", "codename": ""} for _ in range(TEAM_SIZE)]
 
     def clear_teams(self):
-        self.red_rows = [{"id": "", "codename": ""} for _ in range(15)]
-        self.green_rows = [{"id": "", "codename": ""} for _ in range(15)]
-        
+        # Clear this game's lists, not the database.
+        self.red_rows = self._empty_team()
+        self.green_rows = self._empty_team()
 
     def add_player(self, player_id, codename, team):
         player_id = str(player_id)
@@ -36,6 +42,7 @@ class Model():
             self.player_database.add_player(player_id, codename)
             self.database_players[player_id] = codename
 
+        # Keep a player on just one team.
         if team == "red":
             other_rows = self.green_rows
         else:
@@ -47,6 +54,7 @@ class Model():
         return is_new_player
 
     def delete_player(self, player_id):
+        # Delete from the database before clearing the screen.
         player_id = str(player_id)
         if player_id not in self.database_players:
             raise PlayerDatabaseError(f"Player ID {player_id} is not saved in the database")

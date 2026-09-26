@@ -9,47 +9,41 @@ class PlayerDatabaseError(Exception):
 
 
 class PlayerDatabase:
+    # Use one path for every database call so errors and cleanup stay the same.
+    def _query(self, query, parameters=(), fetch_all=False):
+        database_name = os.environ.get("PGDATABASE", "photon")
+        try:
+            with closing(psycopg2.connect(dbname=database_name)) as connection:
+                with connection:
+                    with connection.cursor() as cursor:
+                        cursor.execute(query, parameters)
+                        if fetch_all:
+                            return cursor.fetchall()
+                        return cursor.fetchone()
+        except psycopg2.Error as error:
+            raise PlayerDatabaseError(str(error)) from error
+
+    # Read all saved players, in ID order.
     def get_players(self):
-        database_name = os.environ.get("PGDATABASE", "photon")
-        try:
-            with closing(psycopg2.connect(dbname=database_name)) as connection:
-                with connection:
-                    with connection.cursor() as cursor:
-                        cursor.execute(
-                            "SELECT id, codename FROM public.players ORDER BY id;"
-                        )
-                        return cursor.fetchall()
-        except psycopg2.Error as error:
-            raise PlayerDatabaseError(str(error)) from error
+        return self._query(
+            "SELECT id, codename FROM public.players ORDER BY id;",
+            fetch_all=True,
+        )
 
+    # Save one new player and return the saved row.
     def add_player(self, player_id, codename):
-        database_name = os.environ.get("PGDATABASE", "photon")
-        try:
-            with closing(psycopg2.connect(dbname=database_name)) as connection:
-                with connection:
-                    with connection.cursor() as cursor:
-                        cursor.execute(
-                            """
-                            INSERT INTO public.players (id, codename)
-                            VALUES (%s, %s)
-                            RETURNING id, codename;
-                            """,
-                            (player_id, codename),
-                        )
-                        return cursor.fetchone()
-        except psycopg2.Error as error:
-            raise PlayerDatabaseError(str(error)) from error
+        return self._query(
+            """
+            INSERT INTO public.players (id, codename)
+            VALUES (%s, %s)
+            RETURNING id, codename;
+            """,
+            (player_id, codename),
+        )
 
+    # Delete one player and return the row that got deleted.
     def delete_player(self, player_id):
-        database_name = os.environ.get("PGDATABASE", "photon")
-        try:
-            with closing(psycopg2.connect(dbname=database_name)) as connection:
-                with connection:
-                    with connection.cursor() as cursor:
-                        cursor.execute(
-                            "DELETE FROM public.players WHERE id = %s RETURNING id, codename;",
-                            (player_id,),
-                        )
-                        return cursor.fetchone()
-        except psycopg2.Error as error:
-            raise PlayerDatabaseError(str(error)) from error
+        return self._query(
+            "DELETE FROM public.players WHERE id = %s RETURNING id, codename;",
+            (player_id,),
+        )

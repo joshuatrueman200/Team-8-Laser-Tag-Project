@@ -1,15 +1,17 @@
-# UDP Transport for Photon Equipment Coedes
+# Send and receive laser-tag equipment codes over UDP.
 import ipaddress
 import socket
 
 
 class UDPManager:
+    # Use port 7500 to send and 7501 to listen.
     def __init__(self, source_ip="127.0.0.1", destination_ip="127.0.0.1"):
         self.send_socket = None
         self.receive_socket = None
         self.change_network(source_ip, destination_ip)
 
     def change_network(self, source_ip, destination_ip):
+        # Check the addresses before opening sockets.
         source_ip = str(ipaddress.IPv4Address(source_ip.strip()))
         destination_ip = str(ipaddress.IPv4Address(destination_ip.strip()))
         if source_ip.startswith("127.") != destination_ip.startswith("127."):
@@ -41,6 +43,7 @@ class UDPManager:
                                 (self.destination_ip, 7500))
 
     def receive_messages(self):
+        # Read everything waiting, then return without blocking.
         messages = []
         while True:
             try:
@@ -50,6 +53,7 @@ class UDPManager:
             messages.append((data, address))
 
     def close(self):
+        # Release the sockets when the game ends.
         if self.send_socket:
             self.send_socket.close()
         if self.receive_socket:
