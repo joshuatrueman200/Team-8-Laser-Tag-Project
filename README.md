@@ -27,10 +27,10 @@ You should see `Team-8-Laser-Tag-Project-Joshua.zip` in the output.
 
 ### If you see "Permission denied"
 
-Run this once in the VM terminal (the VM account name is `student`):
+Run this once in the VM terminal:
 
 ```bash
-sudo usermod -aG vboxsf "$USER"
+sudo usermod -aG vboxsf student
 ```
 
 When prompted, enter the VM account password `student` manually; the characters will not appear as you type. The password prompt cannot be safely automated here. Then log out of the VM desktop and log back in (or reboot) so the new group membership takes effect. Try the `ls` check again. If the `vboxsf` group does not exist, VirtualBox Guest Additions may not be installed or running.
