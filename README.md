@@ -1,40 +1,64 @@
 # Team 8 Laser Tag: VM Quick Start
 
-## Software needed
+## Before you start
 
 - Debian Linux VM with a graphical desktop and Python 3.9 or newer.
+- VirtualBox Guest Additions, for shared folders.
 - The existing PostgreSQL `photon` database and `public.players` table.
-- VirtualBox Guest Additions for shared folders.
-- GitHub access on the Windows host to download the project ZIP. Git is not needed inside the VM.
+- GitHub access on the Windows host. Git is not needed inside the VM.
 
-## One-time shared folder setup
+## Set up the shared folder once
 
-1. Download the `Joshua` branch ZIP on the host computer into a folder you choose.
-2. Shut down the VM for this one-time setup. In VirtualBox, open **Settings > Shared Folders**.
-3. Add the host folder containing the ZIP. Name it `repo-share`; check **Auto-mount** and **Make Permanent**.
-4. Start the VM. If the shared folder says permission denied, run this once and reboot:
+1. On the Windows host, download the `Joshua` branch ZIP into a folder you can find.
+2. Shut down the VM. In VirtualBox, open **Settings > Shared Folders** and add the Windows folder that contains the ZIP.
+3. In the **Name** field, enter a simple name such as `FolderName`. Check **Auto-mount** and **Make Permanent**.
+
+	**Remember the Name exactly.** The Windows folder path is selected in VirtualBox; you do not type that path in the VM. In the VM, a share named `FolderName` appears at `/media/sf_FolderName`. For example, if you named yours `VMzip`, its VM path is `/media/sf_VMzip`.
+
+4. Start the VM. In the VM terminal, check that the share and ZIP are visible. Replace `FolderName` with the Name you chose in VirtualBox:
 
 ```bash
-sudo usermod -aG vboxsf student
-sudo reboot
+ls -lh /media/sf_FolderName
 ```
 
-## Install and run
+You should see `Team-8-Laser-Tag-Project-Joshua.zip` in the output.
 
-Paste this into the VM terminal. The shared folder is `/media/sf_repo-share`:
+### If you see "Permission denied"
+
+Run this once in the VM terminal:
+
+```bash
+sudo usermod -aG vboxsf "$USER"
+```
+
+Enter your VM account password if `sudo` asks; the characters will not appear as you type. Then log out of the VM desktop and log back in (or reboot) so the new group membership takes effect. Try the `ls` check again. If the `vboxsf` group does not exist, VirtualBox Guest Additions may not be installed or running.
+
+## Extract, install, and run
+
+In the commands below, replace `FolderName` with the exact VirtualBox **Name** you remembered above. For your share named `VMzip`, use `/media/sf_VMzip`.
+
+Run these commands in the VM terminal, one at a time:
 
 ```bash
 mkdir -p ~/laser-tag
-cp /media/sf_repo-share/Team-8-Laser-Tag-Project-Joshua.zip ~/laser-tag/
+cp /media/sf_FolderName/Team-8-Laser-Tag-Project-Joshua.zip ~/laser-tag/
 python3 -m zipfile -e ~/laser-tag/Team-8-Laser-Tag-Project-Joshua.zip ~/laser-tag
 cd ~/laser-tag/Team-8-Laser-Tag-Project-Joshua
 bash setup_vm.sh
 python3 main.py
 ```
 
-`setup_vm.sh` checks for Pygame and the PostgreSQL Python driver. If missing, it installs Debian packages `python3-pygame` and `python3-psycopg2`. It does not install PostgreSQL or change its database or tables. The game defaults to the `photon` database, so no separate `psql` command or `PGDATABASE` setting is needed just to launch it.
+`setup_vm.sh` checks for Pygame and the PostgreSQL Python driver. If either is missing, it installs Debian packages `python3-pygame` and `python3-psycopg2`; your VM account may need `sudo` access. The script does not install PostgreSQL or change its database or tables. The game uses the existing `photon` database by default.
 
-If the downloaded ZIP does not contain `setup_vm.sh`, download a fresh ZIP after that script has been pushed to GitHub.
+## View saved players
 
-For later ZIP downloads, put the new ZIP in the same host folder. It appears in the VM's shared folder automatically; you do not need to shut down the VM again.
+To print the saved player IDs and codenames from the VM terminal:
+
+```bash
+psql -d photon -c "SELECT id, codename FROM public.players ORDER BY id;"
+```
+
+## Later ZIP downloads
+
+Put the new ZIP in the same Windows folder. It will appear in the VM shared folder automatically; you do not need to shut down the VM again.
 
