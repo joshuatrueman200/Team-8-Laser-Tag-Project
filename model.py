@@ -23,15 +23,7 @@ class Model():
 #############################################
 ############### DB Connection HERE 
 # Feel free to change the code .- Eduardo
-    def create_player_db(self):
-        conn = sqlite3.connect("player.db")
 
-        with open("player.sql", "r") as f:
-            sql = f.read()
-
-        conn.executescript(sql)
-        conn.commit()
-        conn.close()
 
 
     def check_ID_DB(self, id):

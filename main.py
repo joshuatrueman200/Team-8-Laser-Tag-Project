@@ -4,12 +4,13 @@ from model import Model
 from controller import Controller
 import argparse as arg
 
-# Arguments
+# Arguments (create them in such a format)
 parser = arg.ArgumentParser()
 parser.add_argument("--music_off", action="store_true", help="Activate it to shut music off")
 
 args = parser.parse_args()
 
+# Store argument result in a variable
 music_off = args.music_off
 
 pygame.init()
