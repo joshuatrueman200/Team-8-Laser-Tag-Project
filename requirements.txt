@@ -1,2 +1,2 @@
-pygame>=2.5,<3
-psycopg2-binary>=2.9,<3
+psycopg2_binary==2.9.13
+pygame==2.6.1
