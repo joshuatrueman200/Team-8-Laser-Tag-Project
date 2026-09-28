@@ -3,12 +3,20 @@ from controller import Controller
 from database import PlayerDatabase
 from model import Model
 from view import View
+import argparse as arg
 
 
 def main():
     # Start Pygame and build the game parts.
     pygame.init()
     controller = None
+
+    parser = arg.ArgumentParser()
+    parser.add_argument("--music_off", action="store_true", help = "Place to shut off music ingame")
+    args = parser.parse_args()
+
+    music_off = args.music_off
+
     try:
         screen = pygame.display.set_mode((800, 600))
         pygame.display.set_caption("Laser Tag")
@@ -18,9 +26,10 @@ def main():
         controller = Controller(model, view)
 
         # Play the game music on repeat.
-        pygame.mixer.music.load("Asset/photon_tracks_Track01.mp3")
-        pygame.mixer.music.set_volume(1)
-        pygame.mixer.music.play(-1, start=180)
+        if not music_off:
+            pygame.mixer.music.load("Asset/photon_tracks_Track01.mp3")
+            pygame.mixer.music.set_volume(1)
+            pygame.mixer.music.play(-1, start=180)
 
         # Keep the window open until the player closes it.
         running = True
