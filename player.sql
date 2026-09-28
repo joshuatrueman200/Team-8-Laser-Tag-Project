@@ -1,10 +1,4 @@
---Create table  (this file is no longer needed for project)
-CREATE TABLE player (
-  id INT,
-  codename VARCHAR(30)
+CREATE TABLE IF NOT EXISTS player (
+    id INTEGER PRIMARY KEY,
+    codename TEXT NOT NULL CHECK(length(codename) BETWEEN 1 AND 30)
 );
-
---Place first record into table
-INSERT INTO player (id, codename)
-VALUES (1, 'Opus');
-

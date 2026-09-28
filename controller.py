@@ -1,3 +1,4 @@
+import sqlite3
 import pygame
 from udp_manager import UDPManager
 
@@ -94,7 +95,15 @@ class Controller():
             if self.view.col == 0:
                 if event.key == pygame.K_RETURN:
                     if current["id"]:
-                        self.model.check_ID_DB(current["id"])
+                        if any(row is not current and row["id"] and
+                               int(row["id"]) == int(current["id"])
+                               for row in self.model.red_rows + self.model.green_rows):
+                            self.status = "That player ID is already on a team"
+                            return
+                        saved_name = self.model.check_ID_DB(current["id"])
+                        if saved_name:
+                            current["codename"] = saved_name
+                            self.status = f"Returning player: {saved_name} (press ENTER to confirm)"
                         self.view.col = 1
                 elif event.key == pygame.K_BACKSPACE:
                     current["id"] = current["id"][:-1]
@@ -105,7 +114,20 @@ class Controller():
             else: 
                 if event.key == pygame.K_RETURN:
                     if current["codename"]:
-                        self.model.check_Codename_DB(current["codename"])
+                        codename = current["codename"].strip()
+                        if not codename or len(codename) > 30:
+                            self.status = "Codename must contain 1 to 30 characters"
+                            return
+                        owner = self.model.check_Codename_DB(codename)
+                        if owner is not None and owner != int(current["id"]):
+                            self.status = f"Codename already belongs to player {owner}"
+                            return
+                        try:
+                            self.model.save_player(current["id"], codename)
+                        except (ValueError, sqlite3.DatabaseError) as error:
+                            self.status = f"Database error: {error}"
+                            return
+                        current["codename"] = codename
                         key = (self.view.current_team, self.view.row)
                         if key not in self.added_rows:
                             try:
@@ -114,7 +136,7 @@ class Controller():
                                 self.status = f"UDP send failed: {error}"
                             else:
                                 self.added_rows.add(key)
-                                self.status = f"Sent equipment code {current['id']} to {self.udp.destination_ip}:7500"
+                                self.status = f"Sent Entry {current['id']} to IP {self.udp.destination_ip} using Port:7500"
                         if self.view.row < 14:
                             self.view.row += 1
                         self.view.col = 0
@@ -136,3 +158,4 @@ class Controller():
 
     def close(self):
         self.udp.close()
+        self.model.close()

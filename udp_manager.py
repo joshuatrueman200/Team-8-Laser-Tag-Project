@@ -1,4 +1,4 @@
-"""UDP transport for Photon equipment codes."""
+# UDP Transport for Photon Equipment Coedes
 import ipaddress
 import socket
 
