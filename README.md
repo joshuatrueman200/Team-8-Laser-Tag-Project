@@ -27,19 +27,44 @@ The system includes:
 * Python3
 * Pygame
 
-On the VM :
-sudo apt update
-sudo apt install python3-pip python3-venv
-```
-Change Directories to porject folder and make sure to go into Team-8-Laser-Tag-Project-main 
-Run these commands for requirements:
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
 
-Run the program:
+This runs off the assumption that the files is on the virtual machine somehow (We used a shared folder) and is in the home folder wherever you like.
+
+Open a terminal in the project folder containing `main.py` and
+`requirements.txt`.
+
+1. Install virtual environment support:
+
+   ```bash
+   sudo apt update
+   sudo apt install python3-venv
+   ```
+
+2. Create the virtual environment in your home folder:
+
+   ```bash
+   python3 -m venv ~/laser-tag-venv
+   ```
+
+
+3. Activate the environment:
+
+   ```bash
+   source ~/laser-tag-venv/bin/activate
+   ```
+
+4. Install the project dependencies:
+
+   ```bash
+   python -m pip install -r requirements.txt
+   ```
+
+## Run the Game
+
+From the project folder, activate the environment and start the game:
 
 ```bash
+source ~/laser-tag-venv/bin/activate
 python main.py
 ```
 
@@ -47,6 +72,16 @@ To run without music:
 
 ```bash
 python main.py --music_off
+```
+
+Activate the environment whenever you open a new terminal.
+The setup and dependency installation steps only need to be completed
+once unless you recreate the environment or update the dependencies.
+
+To exit the virtual environment:
+
+```bash
+deactivate
 ```
 
 Make sure the `Asset` folder is in the project directory and contains:
