@@ -11,13 +11,8 @@ class Model:
         self.red_rows = self._empty_team()
         self.green_rows = self._empty_team()
         self.database_players = {}
-        visible_index = 0
         for player_id, codename in self.player_database.get_players():
-            player_id = str(player_id)
-            self.database_players[player_id] = codename
-            if player_id and codename and visible_index < len(self.red_rows):
-                self.red_rows[visible_index] = {"id": player_id, "codename": codename}
-                visible_index += 1
+            self.database_players[str(player_id)] = codename
 
     @staticmethod
     def _empty_team():
