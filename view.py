@@ -1,10 +1,9 @@
-import pygame
 import time
-import sqlite3
+import pygame
 
-class View():
+class View:
+    # Draw the game screens and team lists.
 
-    # Constructor 
     def __init__(self, screen, model):
 
         self.screen = screen
@@ -13,11 +12,11 @@ class View():
         self.row = 0
         self.col = 0
 
-        # Load logo
+        # Load the game logo.
         self.logo = pygame.image.load("Asset/logo.jpg")
         self.logo = pygame.transform.scale(self.logo, (500, 300))
 
-        # Screens
+        # Remember which screen to draw.
         self.splash_screen = True
         self.player_entry_screen = False
         self.game_screen = False
@@ -27,19 +26,14 @@ class View():
         self.network_field = 0
         self.status = ""
 
-    # GETTERS
-    def get_current_team(self):
-        return self.current_team
-
-    #########################################################################
-    # It displays the logo for 3 seconds before going into player ent scr
+    # Show the logo before the player list.
     def show_splash_screen(self):
         self.screen.fill((0, 0, 0))
         self.screen.blit(self.logo, (150,150))
         pygame.display.update()
         time.sleep(3)
 
-    # Displays the player entry screen
+    # Show both team lists and their controls.
     def show_player_entry_screen(self):
         self.screen.fill((0, 0, 0))
         self.draw_panel(50, (255, 0, 0), "RED TEAM", self.model.red_rows, self.current_team == "red")
@@ -72,27 +66,20 @@ class View():
             self.screen.blit(font.render(self.status[:95], True, (255, 255, 0)), (80, 565))
 
     def update(self):
-
-        # show splash screen
         if self.splash_screen:
             self.show_splash_screen()
             self.splash_screen = False
             self.player_entry_screen = True
-
-        # show player entry screen
         elif self.network_screen:
             self.show_network_screen()
-
         elif self.player_entry_screen:
             self.show_player_entry_screen()
             self.draw_status()
-
-        # show game screen
         elif self.game_screen:
             self.show_game_screen()
 
 
-    # Draws the panels to write user data
+    # Draw one team's player rows.
     def draw_panel(self, x, color, label, rows, is_active):
         # Title of the panel
         font = pygame.font.Font(None, 24)
@@ -106,13 +93,11 @@ class View():
             id_box = pygame.Rect(x, y, 30, row_height - 4)
             codename_box = pygame.Rect(x + 35, y, 150, row_height - 4)
 
-            # Draw ID Box
             pygame.draw.rect(self.screen, color, id_box, 1)
 
-            # Draw Codename Box
             pygame.draw.rect(self.screen, color, codename_box, 1)
 
-            # Checks if there is data to write
+            # Draw player text only when this spot has a value.
             if data["id"]:
                 id_text = font.render(data["id"], True, (255, 255, 255))
                 self.screen.blit(id_text, (id_box.x + 3, id_box.y + 5))
@@ -120,7 +105,7 @@ class View():
                 codename_text = font.render(data["codename"], True, (255, 255, 255))
                 self.screen.blit(codename_text, (codename_box.x + 3, codename_box.y + 5))
 
-            # Highlights the current cell you are wring on
+            # Mark the cell that will get the next key press.
             if is_active and i == self.row:
                 highlight_box = id_box if self.col == 0 else codename_box
                 pygame.draw.rect(self.screen, (255, 255, 0), highlight_box.inflate(4, 4), 2)
@@ -131,12 +116,14 @@ class View():
         if self.col == 0:
             lines = [
                 "Write your Player ID",
-                "and press ENTER to confirm."
+                "TAB or ENTER moves to",
+                "the codename field."
             ]
         else:
             lines = [
                 "Write your Codename",
-                "and press ENTER to confirm."
+                "TAB returns to the ID.",
+                "ENTER saves the player."
             ]
 
         lines += ["", "Press '.' to", "switch team"]
@@ -152,29 +139,25 @@ class View():
 
 
 
-    #CONTROLS PANEL HERE
-    # F5 starts the game
-    # F12 clears the game.
+    # Show the keyboard controls along the bottom.
     def show_game_controls(self):
         controls =(
             (10, ("F5", "Start", "Game")),
+            (self.screen.get_width() - 185, ("DEL", "Delete", "Player")),
             (self.screen.get_width() - 125, ("F9", "UDP", "Network")),
             (self.screen.get_width() - 60, ("F12", "Clear", "Game")),
         )
 
-        #Draws the controls on the screen
         for x, lines in controls:
             self.draw_control(x, lines)
 
-    # box and font for the controls
+    # Draw one small control box.
     def draw_control(self, x, lines): 
-        #White outline for boxes
         control = pygame.Rect(x, self.screen.get_height() - 60, 50, 50)
         pygame.draw.rect(self.screen, (255, 255, 255), control, 1)
 
-        # Draw the text inside the box
         font = pygame.font.Font(None, 14)
         for index, line in enumerate(lines):
-            title = font.render(line, True, (255, 255, 255)) #White but we can changre it to green
+            title = font.render(line, True, (255, 255, 255))
             title_rect = title.get_rect(center=(control.centerx, control.y + 10 + index * 14))
             self.screen.blit(title, title_rect)

@@ -1,1 +1,2 @@
+psycopg2_binary==2.9.13
 pygame==2.6.1

@@ -1,8 +1,10 @@
-import sqlite3
 import pygame
+from database import PlayerDatabaseError
 from udp_manager import UDPManager
 
-class Controller():
+
+class Controller:
+    # Turn key presses into game, database, and network actions.
 
     # Constructor
     def __init__(self, model, view):
@@ -10,25 +12,40 @@ class Controller():
         self.view = view
         self.udp = UDPManager()
         self.added_rows = set()
+        self._refresh_added_rows()
         self.network_field = 0
         self.network_source = self.udp.source_ip
         self.network_destination = self.udp.destination_ip
         self.status = ""
+        self.pending_delete = None
 
-    # Looks for the first row with no data
+    def _refresh_added_rows(self):
+        # Track which filled spots are already saved.
+        self.added_rows = {
+            (team, index)
+            for team, rows in (("red", self.model.red_rows), ("green", self.model.green_rows))
+            for index, data in enumerate(rows)
+            if data["id"] and data["codename"]
+        }
+
+    def _current_team_rows(self):
+        # Return the list for the team on screen.
+        if self.view.current_team == "red":
+            return self.model.red_rows
+        return self.model.green_rows
+
     def first_incomplete_row(self, rows):
+        # Find an open spot, or use the last spot if the team is full.
         for i, data in enumerate(rows):
             if not data["id"] or not data["codename"]:
                 return i
         return len(rows) - 1
-    
-    #Keyboard inputs
+
     def handle_event(self, event):
         if event.type != pygame.KEYDOWN:
             return
 
-        ########################################################
-        # PLAYER ENTRY SCREEN EVENTS
+        # Network screen keys edit the IP addresses.
         if self.view.network_screen:
             if event.key == pygame.K_ESCAPE:
                 self.view.network_screen = False
@@ -56,87 +73,138 @@ class Controller():
                 self.network_destination = value
             return
 
-
+        # Only handle roster keys on the player entry screen.
         if self.view.player_entry_screen:
+            # Ask before removing a saved player for good.
+            if self.pending_delete is not None:
+                if event.key == pygame.K_y:
+                    player_id = self.pending_delete
+                    try:
+                        deleted_player = self.model.delete_player(player_id)
+                    except PlayerDatabaseError as error:
+                        self.status = f"Database delete failed: {error}"
+                    else:
+                        self._refresh_added_rows()
+                        self.status = (
+                            f"Deleted player {deleted_player[0]} ({deleted_player[1]}) from database"
+                        )
+                    self.pending_delete = None
+                elif event.key in (pygame.K_n, pygame.K_ESCAPE):
+                    self.pending_delete = None
+                    self.status = "Delete cancelled"
+                return
+
             if event.key == pygame.K_F9:
                 self.network_source = self.udp.source_ip
                 self.network_destination = self.udp.destination_ip
                 self.network_field = 0
                 self.view.network_screen = True
                 return
-            # Display Game Screen with F5
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_F5:
-                    self.view.player_entry_screen = False
-                    self.view.game_screen = True
+            if event.key == pygame.K_F5:
+                self.view.player_entry_screen = False
+                self.view.game_screen = True
+                return
 
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_F12:
+            if event.key == pygame.K_F12:
                 self.model.clear_teams()
                 self.added_rows.clear()
                 self.view.row = 0
                 self.view.col = 0
+                try:
+                    count = self.model.clear_codenames()
+                except PlayerDatabaseError as error:
+                    self.status = f"Game cleared; database names not cleared: {error}"
+                else:
+                    self.status = f"Game cleared; names cleared for {count} IDs kept in database"
+                return
 
-            
+            if event.key == pygame.K_UP:
+                self.view.row = max(0, self.view.row - 1)
+                return
+            if event.key == pygame.K_DOWN:
+                self.view.row = min(len(self._current_team_rows()) - 1, self.view.row + 1)
+                return
 
-            # Select which team you want to write on with "."
+            # Delete removes the saved player, not just the roster entry.
+            if event.key == pygame.K_DELETE:
+                rows = self._current_team_rows()
+                current = rows[self.view.row]
+                if current["id"] and current["codename"]:
+                    self.pending_delete = current["id"]
+                    self.status = (
+                        f"Delete {current['id']} ({current['codename']}) from database? Y/N"
+                    )
+                else:
+                    self.status = "Select a saved player to delete"
+                return
+
+            if event.key == pygame.K_TAB:
+                self.view.col = 1 - self.view.col
+                return
+
+            # A dot switches the team being edited.
             if event.unicode == ".":
                 self.view.current_team = "green" if self.view.current_team == "red" else "red"
-                new_rows = self.model.red_rows if self.view.current_team == "red" else self.model.green_rows
+                new_rows = self._current_team_rows()
                 self.view.row = self.first_incomplete_row(new_rows)
                 current = new_rows[self.view.row]
                 self.view.col = 0 if not current["id"] else 1
                 return
 
-
-
-            rows = self.model.red_rows if self.view.current_team == "red" else self.model.green_rows
+            rows = self._current_team_rows()
             current = rows[self.view.row]
 
-            # Type ID
+            # Type the ID first, then move to the codename.
             if self.view.col == 0:
                 if event.key == pygame.K_RETURN:
                     if current["id"]:
-                        if any(row is not current and row["id"] and
-                               int(row["id"]) == int(current["id"])
-                               for row in self.model.red_rows + self.model.green_rows):
-                            self.status = "That player ID is already on a team"
+                        try:
+                            current["codename"] = self.model.get_codename(current["id"]) or ""
+                        except PlayerDatabaseError as error:
+                            self.status = f"Database lookup failed: {error}"
                             return
-                        saved_name = self.model.check_ID_DB(current["id"])
-                        if saved_name:
-                            current["codename"] = saved_name
-                            self.status = f"Returning player: {saved_name} (press ENTER to confirm)"
                         self.view.col = 1
                 elif event.key == pygame.K_BACKSPACE:
                     current["id"] = current["id"][:-1]
                 elif event.unicode.isdigit():
                     current["id"] += event.unicode
 
-            # Type Code Name
-            else: 
+            # Type the codename, then Enter saves or assigns the player.
+            else:
                 if event.key == pygame.K_RETURN:
-                    if current["codename"]:
-                        codename = current["codename"].strip()
-                        if not codename or len(codename) > 30:
-                            self.status = "Codename must contain 1 to 30 characters"
-                            return
-                        owner = self.model.check_Codename_DB(codename)
-                        if owner is not None and owner != int(current["id"]):
-                            self.status = f"Codename already belongs to player {owner}"
-                            return
-                        try:
-                            self.model.save_player(current["id"], codename)
-                        except (ValueError, sqlite3.DatabaseError) as error:
-                            self.status = f"Database error: {error}"
-                            return
-                        current["codename"] = codename
+                    if current["id"] and current["codename"]:
                         key = (self.view.current_team, self.view.row)
-                        if key not in self.added_rows:
+                        previous_codename = self.model.database_players.get(current["id"])
+                        if key not in self.added_rows or previous_codename != current["codename"]:
+                            try:
+                                is_new_player = self.model.add_player(
+                                    current["id"], current["codename"], self.view.current_team
+                                )
+                            except PlayerDatabaseError as error:
+                                self.status = f"Database save failed: {error}"
+                                return
+                            self._refresh_added_rows()
+                            if is_new_player:
+                                self.status = (
+                                    f"Saved player {current['id']} ({current['codename']}) "
+                                    f"to database and assigned to {self.view.current_team}"
+                                )
+                            elif previous_codename != current["codename"]:
+                                self.status = (
+                                    f"Updated player {current['id']} to ({current['codename']}) "
+                                    f"and assigned to {self.view.current_team}"
+                                )
+                            else:
+                                self.status = (
+                                    f"Assigned player {current['id']} ({current['codename']}) "
+                                    f"to {self.view.current_team}"
+                                )
                             try:
                                 self.udp.broadcast_equipment_code(current["id"])
                             except OSError as error:
-                                self.status = f"UDP send failed: {error}"
+                                self.status += f"; UDP send failed: {error}"
                             else:
-                                self.added_rows.add(key)
-                                self.status = f"Sent Entry {current['id']} to IP {self.udp.destination_ip} using Port:7500"
+                                self.status += f"; sent to {self.udp.destination_ip}:7500"
                         if self.view.row < 14:
                             self.view.row += 1
                         self.view.col = 0
@@ -144,8 +212,6 @@ class Controller():
                     current["codename"] = current["codename"][:-1]
                 elif event.unicode.isprintable():
                     current["codename"] += event.unicode
-
-            
 
     def update(self):
         for data, address in self.udp.receive_messages():
@@ -158,4 +224,3 @@ class Controller():
 
     def close(self):
         self.udp.close()
-        self.model.close()

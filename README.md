@@ -1,149 +1,75 @@
-# Team 8 Laser Tag System
+# Team 8 Laser Tag: VM Quick Start
 
-## Project Description
+## Before you start
 
-This project is a laser tag system that allows users to enter players, assign them to Red or Green teams, and communicate with laser tag equipment using UDP networking.
+- Debian Linux VM with a graphical desktop and Python 3.9 or newer.
+- VirtualBox Guest Additions, for shared folders.
+- The existing PostgreSQL `photon` database and `public.players` table.
+- GitHub access on the Windows host. Git is not needed inside the VM.
 
-The system includes:
+The VM account is `student` with password `student`.
 
-* Splash screen
-* Player ID and codename entry
-* Red and Green teams with up to 15 players each
-* UDP communication for equipment codes
-* Configurable UDP source and destination IP addresses
-* Game screen
-* Optional background music
+## Set up the shared folder once
 
-## Contributors
+1. On the Windows host, download the `Joshua` branch ZIP into a folder you can find.
+2. Shut down the VM. In VirtualBox, open **Settings > Shared Folders** and add the Windows folder that contains the ZIP.
+3. In the **Name** field, enter a simple name such as `FolderName`. Check **Auto-mount** and **Make Permanent**.
 
-* "joshuatrueman200" - Joshua Trueman
-* "xXJ02HXx" - Joshua Rivas
-* "leduarcev17" - Eduardo Arce Vargas
-* "ChillMark" - Mark Freeman
-* "ajd035776" - Alex D'Agostino
+   **Remember the Name exactly.** The Windows folder path is selected in VirtualBox; you do not type that path in the VM. In the VM, a share named `FolderName` appears at `/media/sf_FolderName`. For example, if you named yours `VMzip`, its VM path is `/media/sf_VMzip`.
 
-## Requirements
-
-* Python3
-* Pygame
-
-
-This runs off the assumption that the files is on the virtual machine somehow (We used a shared folder) and is in the home folder wherever you like.
-
-Open a terminal in the project folder containing `main.py` and
-`requirements.txt`.
-
-1. Install virtual environment support:
-
-   ```bash
-   sudo apt update
-   sudo apt install python3-venv
-   ```
-
-2. Create the virtual environment in your home folder:
-
-   ```bash
-   python3 -m venv ~/laser-tag-venv
-   ```
-
-
-3. Activate the environment:
-
-   ```bash
-   source ~/laser-tag-venv/bin/activate
-   ```
-
-4. Install the project dependencies:
-
-   ```bash
-   python -m pip install -r requirements.txt
-   ```
-
-## Run the Game
-
-From the project folder, activate the environment and start the game:
+4. Start the VM. In the VM terminal, check that the share and ZIP are visible. Replace `FolderName` with the Name you chose in VirtualBox:
 
 ```bash
-source ~/laser-tag-venv/bin/activate
-python main.py
+ls -lh /media/sf_FolderName
 ```
 
-To run without music:
+You should see `Team-8-Laser-Tag-Project-Joshua.zip` in the output.
+
+### If you see "Permission denied"
+
+Run this once in the VM terminal:
 
 ```bash
-python main.py --music_off
+sudo usermod -aG vboxsf student
 ```
 
-Activate the environment whenever you open a new terminal.
-The setup and dependency installation steps only need to be completed
-once unless you recreate the environment or update the dependencies.
+When prompted, enter the VM account password `student` manually; the characters will not appear as you type. The password prompt cannot be safely automated here. Then log out of the VM desktop and log back in (or reboot) so the new group membership takes effect. Try the `ls` check again. If the `vboxsf` group does not exist, VirtualBox Guest Additions may not be installed or running.
 
-To exit the virtual environment:
+## Extract, install, and run
+
+In the commands below, replace `FolderName` with the exact VirtualBox **Name** you remembered above. For your share named `VMzip`, use `/media/sf_VMzip`.
+
+Run these commands in the VM terminal, one at a time:
 
 ```bash
-deactivate
+mkdir -p ~/laser-tag
+cp /media/sf_FolderName/Team-8-Laser-Tag-Project-Joshua.zip ~/laser-tag/
+python3 -m zipfile -e ~/laser-tag/Team-8-Laser-Tag-Project-Joshua.zip ~/laser-tag
+cd ~/laser-tag/Team-8-Laser-Tag-Project-Joshua
+bash setup_vm.sh
+python3 main.py
 ```
 
-Make sure the `Asset` folder is in the project directory and contains:
+`setup_vm.sh` checks for Pygame and the PostgreSQL Python driver. If either is missing, it installs Debian packages `python3-pygame` and `python3-psycopg2`; your VM account may need `sudo` access. The script does not install PostgreSQL or change its database or tables. The game uses the existing `photon` database by default.
 
-```text
-Asset/
-├── logo.jpg
-└── photon_tracks_Track01.mp3
+## View saved players
+
+To print the saved player IDs and codenames from the VM terminal:
+
+```bash
+psql -d photon -c "SELECT id, codename FROM public.players ORDER BY id;"
 ```
 
-## Controls
+## Later ZIP downloads
 
- Key     |   Function                      
- --------------------------------------
-* `ENTER` - Confirm Player ID or Codename 
-* `.`     - Switch teams                  
-* `F5`    - Start game                    
-* `F9`    - Open UDP network settings     
-* `F12`   - Clear player entries          
-* `TAB`   - Switch network field          
-* `ESC`   - Cancel network settings       
+Put the new ZIP in the same Windows folder. It will appear in the VM shared folder automatically; you do not need to shut down the VM again.
 
-## UDP Networking
+## Team members
 
-The program uses UDP to send equipment codes.
-
-Port   |  Purpose             
-----------------------------
-`7500` - Send equipment codes 
-`7501` - Receive UDP messages 
-
-The default network settings are:
-
-```text
-Source:      127.0.0.1
-Destination: 127.0.0.1
-```
-
-Press `F9` to change the source and destination IP addresses.
-
-For local testing, use:
-
-```text
-127.0.0.1 -> 127.0.0.1
-```
-
-## Project Files
-
-File               |  Purpose                              
-------------------  ------------------------------------
-* `main.py`          - Starts and runs the program          
-* `controller.py`    - Handles user input and program logic 
-* `model.py`         - Stores player information           
-* `view.py`          - Displays the graphical interface     
-* `udp_manager.py`   - Handles UDP communication            
-* `player.sql`       - SQLite player table schema
-* `players.db`       - Player database created automatically on first run
-* `requirements.txt` - Install script for required libraries    
-* `.gitignore`       - Ignores Python cache files           
-
-## Current Status
-
-The project currently supports player entry, team selection, UDP equipment-code transmission, network configuration, and the basic game screen.
-
-Player IDs and codenames are saved in `players.db` when the codename is confirmed. Entering a returning player's ID fills in the saved codename; press ENTER again to add them to the team and send their equipment code. Entering a new codename for an existing ID updates its saved name. Player IDs cannot appear twice on the teams, and a codename already assigned to another ID is rejected. F12 clears the current teams but keeps saved players for later games. The full laser tag game functionality is still being developed.
+| GitHub username      | Real name       |
+| -------------------- | --------------- |
+| `xXJ02HXx`           | Joshua Rivas    |
+| `leduarcev17Eduardo` | Arce Vargas     |
+| `ChillMark`          | Mark Freeman    |
+| `ajd035776`          | Alex D'Agostino |
+| `JoshuaTrueman200`   | Joshua Trueman  |
