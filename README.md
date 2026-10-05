@@ -11,7 +11,7 @@ The VM account is `student` with password `student`.
 
 ## Set up the shared folder once
 
-1. On the Windows host, download the `Joshua` branch ZIP into a folder you can find.
+1. On the Windows host, download the `main` branch ZIP into a folder you can find.
 2. Shut down the VM. In VirtualBox, open **Settings > Shared Folders** and add the Windows folder that contains the ZIP.
 3. In the **Name** field, enter a simple name such as `FolderName`. Check **Auto-mount** and **Make Permanent**.
 
@@ -64,12 +64,41 @@ psql -d photon -c "SELECT id, codename FROM public.players ORDER BY id;"
 
 Put the new ZIP in the same Windows folder. It will appear in the VM shared folder automatically; you do not need to shut down the VM again.
 
+## How to use the player entry screen
+
+Each team has 15 rows. Every row has an ID box and a codename box. The yellow border marks the box that receives typing.
+
+| Key                    | What it does                                                                      |
+| ---------------------- | --------------------------------------------------------------------------------- |
+| Digits                 | Type the player ID in the ID box                                                  |
+| `Enter` (ID box)       | Look up the ID. If it exists, its codename appears; otherwise type a new codename |
+| `Enter` (codename box) | Save the player to the database, add them to the team, and send the UDP message   |
+| `Tab`                  | Switch between the ID box and the codename box                                    |
+| `.` (dot)              | Switch between the red and green team                                             |
+| `Up` / `Down`          | Move to another row of the current team                                           |
+| `Del`                  | Delete the selected player from the database (asks `Y` / `N`)                     |
+| `F5`                   | Start the game screen                                                             |
+| `F9`                   | Open the UDP network settings                                                     |
+| `F12`                  | Clear both team lists. Players stay saved in the database                         |
+
+An ID that is already in a team cannot be added again. The screen shows "ID already in use". Player 1 (`Opus`) is always created in the database if it is missing.
+
+## UDP network
+
+After a player is saved, the game sends that player's ID as text to port `7500` of the destination IP. The default source and destination are both `127.0.0.1`. The game also listens on port `7501` and prints anything it receives.
+
+To use a different network, press `F9` on the player entry screen:
+
+- `Tab` switches between the **Source IP** and **Destination/Broadcast IP** fields.
+- `Enter` saves the change and `Esc` cancels.
+- Source and destination must both be `127.x.x.x`, or both be non-local addresses.
+
 ## Team members
 
-| GitHub username      | Real name       |
-| -------------------- | --------------- |
-| `xXJ02HXx`           | Joshua Rivas    |
-| `leduarcev17Eduardo` | Arce Vargas     |
-| `ChillMark`          | Mark Freeman    |
-| `ajd035776`          | Alex D'Agostino |
-| `JoshuaTrueman200`   | Joshua Trueman  |
+| GitHub username    | Real name           |
+| ------------------ | ------------------- |
+| `xXJ02HXx`         | Joshua Rivas        |
+| `leduarcev17`      | Eduardo Arce Vargas |
+| `ChillMark`        | Mark Freeman        |
+| `ajd035776`        | Alex D'Agostino     |
+| `JoshuaTrueman200` | Joshua Trueman      |

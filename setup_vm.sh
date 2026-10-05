@@ -28,4 +28,4 @@ fi
 
 "$PYTHON" -c "import pygame, psycopg2; print('Python dependencies are ready.')"
 
-echo "Setup complete. Run the game with: cd '$PROJECT_DIR' && PGDATABASE=photon $PYTHON main.py"
+echo "Setup complete. Run the game with: PGDATABASE=photon $PYTHON main.py"
