@@ -50,15 +50,6 @@ class Model:
             self.player_database.update_codename(player_id, codename)
         self.database_players[player_id] = codename
 
-        # Keep a player on just one team.
-        if team == "red":
-            other_rows = self.green_rows
-        else:
-            other_rows = self.red_rows
-        for index, data in enumerate(other_rows):
-            if data["id"] == player_id:
-                other_rows[index] = {"id": "", "codename": ""}
-
         return is_new_player
 
     def clear_codenames(self):

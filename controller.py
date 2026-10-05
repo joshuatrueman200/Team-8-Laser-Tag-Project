@@ -73,6 +73,7 @@ class Controller:
                 self.network_destination = value
             return
 
+
         # Only handle roster keys on the player entry screen.
         if self.view.player_entry_screen:
             # Ask before removing a saved player for good.
@@ -110,12 +111,7 @@ class Controller:
                 self.added_rows.clear()
                 self.view.row = 0
                 self.view.col = 0
-                try:
-                    count = self.model.clear_codenames()
-                except PlayerDatabaseError as error:
-                    self.status = f"Game cleared; database names not cleared: {error}"
-                else:
-                    self.status = f"Game cleared; names cleared for {count} IDs kept in database"
+                self.status =  "Game cleared"
                 return
 
             if event.key == pygame.K_UP:
@@ -158,6 +154,13 @@ class Controller:
             if self.view.col == 0:
                 if event.key == pygame.K_RETURN:
                     if current["id"]:
+                        # Reject the ID if another spot in either team already uses it.
+                        for team_rows in (self.model.red_rows, self.model.green_rows):
+                            for data in team_rows:
+                                if data is not current and data["id"] == current["id"]:
+                                    self.status = "ID already in use"
+                                    current["id"] = ""
+                                    return
                         try:
                             current["codename"] = self.model.get_codename(current["id"]) or ""
                         except PlayerDatabaseError as error:
