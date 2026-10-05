@@ -11,6 +11,7 @@ class Model:
         self.red_rows = self._empty_team()
         self.green_rows = self._empty_team()
         self.database_players = {}
+        self.player_database.ensure_default_player()
         for player_id, codename in self.player_database.get_players():
             self.database_players[str(player_id)] = codename
 
