@@ -28,11 +28,37 @@ class Controller:
             if data["id"] and data["codename"]
         }
 
-    def _current_team_rows(self):
+    def current_team_rows(self):
         # Return the list for the team on screen.
         if self.view.current_team == "red":
             return self.model.red_rows
         return self.model.green_rows
+
+    def save_player(self, current):
+        # Save the player; the hardware ID stays in the team row. Then go to the next row.
+        self.view.hardware_popup = False
+
+        previous_codename = self.model.database_players.get(current["id"])
+        try:
+            is_new_player = self.model.add_player(
+                current["id"], current["codename"], self.view.current_team
+            )
+        except PlayerDatabaseError as error:
+            self.status = f"Database save failed: {error}"
+            return
+        self._refresh_added_rows()
+
+        team = self.view.current_team
+        if is_new_player:
+            self.status = f"Saved {current['id']} ({current['codename']}) to {team}"
+        elif previous_codename != current["codename"]:
+            self.status = f"Updated {current['id']} ({current['codename']}) in {team}"
+        else:
+            self.status = f"Assigned {current['id']} ({current['codename']}) to {team}"
+
+        if self.view.row < 14:
+            self.view.row += 1
+        self.view.col = 0
 
     def first_incomplete_row(self, rows):
         # Find an open spot, or use the last spot if the team is full.
@@ -76,6 +102,21 @@ class Controller:
 
         # Only handle roster keys on the player entry screen.
         if self.view.player_entry_screen:
+            # Hardware ID box: type the number, Enter saves, Esc cancels.
+            if self.view.hardware_popup:
+                current = self.current_team_rows()[self.view.row]
+                if event.key == pygame.K_ESCAPE:
+                    self.view.hardware_popup = False
+                    current["hardware_id"] = ""
+                elif event.key == pygame.K_RETURN:
+                    if current["hardware_id"]:
+                        self.save_player(current)
+                elif event.key == pygame.K_BACKSPACE:
+                    current["hardware_id"] = current["hardware_id"][:-1]
+                elif event.unicode.isdigit():
+                    current["hardware_id"] += event.unicode
+                return
+
             # Ask before removing a saved player for good.
             if self.pending_delete is not None:
                 if event.key == pygame.K_y:
@@ -118,12 +159,12 @@ class Controller:
                 self.view.row = max(0, self.view.row - 1)
                 return
             if event.key == pygame.K_DOWN:
-                self.view.row = min(len(self._current_team_rows()) - 1, self.view.row + 1)
+                self.view.row = min(len(self.current_team_rows()) - 1, self.view.row + 1)
                 return
 
             # Delete removes the saved player, not just the roster entry.
             if event.key == pygame.K_DELETE:
-                rows = self._current_team_rows()
+                rows = self.current_team_rows()
                 current = rows[self.view.row]
                 if current["id"] and current["codename"]:
                     self.pending_delete = current["id"]
@@ -141,13 +182,13 @@ class Controller:
             # A dot switches the team being edited.
             if event.unicode == ".":
                 self.view.current_team = "green" if self.view.current_team == "red" else "red"
-                new_rows = self._current_team_rows()
+                new_rows = self.current_team_rows()
                 self.view.row = self.first_incomplete_row(new_rows)
                 current = new_rows[self.view.row]
                 self.view.col = 0 if not current["id"] else 1
                 return
 
-            rows = self._current_team_rows()
+            rows = self.current_team_rows()
             current = rows[self.view.row]
 
             # Type the ID first, then move to the codename.
@@ -172,45 +213,11 @@ class Controller:
                 elif event.unicode.isdigit():
                     current["id"] += event.unicode
 
-            # Type the codename, then Enter saves or assigns the player.
+            # Type the codename, then Enter opens the hardware ID box.
             else:
                 if event.key == pygame.K_RETURN:
                     if current["id"] and current["codename"]:
-                        key = (self.view.current_team, self.view.row)
-                        previous_codename = self.model.database_players.get(current["id"])
-                        if key not in self.added_rows or previous_codename != current["codename"]:
-                            try:
-                                is_new_player = self.model.add_player(
-                                    current["id"], current["codename"], self.view.current_team
-                                )
-                            except PlayerDatabaseError as error:
-                                self.status = f"Database save failed: {error}"
-                                return
-                            self._refresh_added_rows()
-                            if is_new_player:
-                                self.status = (
-                                    f"Saved player {current['id']} ({current['codename']}) "
-                                    f"to database and assigned to {self.view.current_team}"
-                                )
-                            elif previous_codename != current["codename"]:
-                                self.status = (
-                                    f"Updated player {current['id']} to ({current['codename']}) "
-                                    f"and assigned to {self.view.current_team}"
-                                )
-                            else:
-                                self.status = (
-                                    f"Assigned player {current['id']} ({current['codename']}) "
-                                    f"to {self.view.current_team}"
-                                )
-                            try:
-                                self.udp.broadcast_equipment_code(current["id"])
-                            except OSError as error:
-                                self.status += f"; UDP send failed: {error}"
-                            else:
-                                self.status += f"; sent to {self.udp.destination_ip}:7500"
-                        if self.view.row < 14:
-                            self.view.row += 1
-                        self.view.col = 0
+                        self.view.hardware_popup = True
                 elif event.key == pygame.K_BACKSPACE:
                     current["codename"] = current["codename"][:-1]
                 elif event.unicode.isprintable():

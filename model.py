@@ -18,7 +18,7 @@ class Model:
     @staticmethod
     def _empty_team():
         # Give each team 15 blank spots.
-        return [{"id": "", "codename": ""} for _ in range(TEAM_SIZE)]
+        return [{"id": "", "codename": "", "hardware_id": ""} for _ in range(TEAM_SIZE)]
 
     def clear_teams(self):
         # Clear this game's lists, not the database.
@@ -77,5 +77,5 @@ class Model:
         for rows in (self.red_rows, self.green_rows):
             for index, data in enumerate(rows):
                 if data["id"] == player_id:
-                    rows[index] = {"id": "", "codename": ""}
+                    rows[index] = {"id": "", "codename": "", "hardware_id": ""}
         return deleted_player

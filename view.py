@@ -25,6 +25,7 @@ class View:
         self.network_destination = "127.0.0.1"
         self.network_field = 0
         self.status = ""
+        self.hardware_popup = False
 
     # Show the logo before the player list.
     def show_splash_screen(self):
@@ -40,6 +41,8 @@ class View:
         self.draw_panel(450, (0, 205, 0), "GREEN TEAM", self.model.green_rows, self.current_team == "green")
         self.draw_instructions()
         self.show_game_controls()
+        if self.hardware_popup:
+            self.draw_hardware_popup()
 
     def show_game_screen(self):
         self.screen.fill((0, 0, 0))
@@ -64,6 +67,27 @@ class View:
         if self.status:
             font = pygame.font.Font(None, 22)
             self.screen.blit(font.render(self.status[:95], True, (255, 255, 0)), (80, 565))
+
+    def draw_hardware_popup(self):
+        box = pygame.Rect(0, 0, 360, 130)
+        box.center = self.screen.get_rect().center
+        pygame.draw.rect(self.screen, (30, 30, 30), box)
+        pygame.draw.rect(self.screen, (255, 255, 0), box, 2)
+
+        font = pygame.font.Font(None, 26)
+        small = pygame.font.Font(None, 20)
+
+        title = font.render("Enter Hardware ID", True, (255, 255, 255))
+        self.screen.blit(title, title.get_rect(center=(box.centerx, box.y + 28)))
+
+        rows = self.model.red_rows if self.current_team == "red" else self.model.green_rows
+        field = pygame.Rect(box.x + 90, box.y + 50, 180, 32)
+        pygame.draw.rect(self.screen, (255, 255, 255), field, 1)
+        number = font.render(rows[self.row]["hardware_id"], True, (255, 255, 255))
+        self.screen.blit(number, (field.x + 6, field.y + 7))
+
+        hint = small.render("ENTER: confirm   ESC: cancel", True, (200, 200, 200))
+        self.screen.blit(hint, hint.get_rect(center=(box.centerx, box.y + 108)))
 
     def update(self):
         if self.splash_screen:
