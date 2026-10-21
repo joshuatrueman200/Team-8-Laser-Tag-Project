@@ -160,9 +160,13 @@ class Controller:
 
             if event.key == pygame.K_UP:
                 self.view.row = max(0, self.view.row - 1)
+                if not self.current_team_rows()[self.view.row]["id"]:
+                    self.view.col = 0
                 return
             if event.key == pygame.K_DOWN:
                 self.view.row = min(len(self.current_team_rows()) - 1, self.view.row + 1)
+                if not self.current_team_rows()[self.view.row]["id"]:
+                    self.view.col = 0
                 return
 
             # Delete removes the saved player, not just the roster entry.
@@ -179,6 +183,10 @@ class Controller:
                 return
 
             if event.key == pygame.K_TAB:
+                current = self.current_team_rows()[self.view.row]
+                if self.view.col == 0 and not current["id"]:
+                    self.status = "Enter a Player ID first"
+                    return
                 self.view.col = 1 - self.view.col
                 return
 
@@ -218,6 +226,10 @@ class Controller:
 
             # Type the codename, then Enter opens the hardware ID box.
             else:
+                if not current["id"]:
+                    self.view.col = 0
+                    self.status = "Enter a Player ID first"
+                    return
                 if event.key == pygame.K_RETURN:
                     if current["id"] and current["codename"]:
                         self.view.hardware_popup = True

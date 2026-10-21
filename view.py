@@ -114,8 +114,8 @@ class View:
         row_height = 30
         for i, data in enumerate(rows):
             y = 80 + i * row_height
-            id_box = pygame.Rect(x, y, 30, row_height - 4)
-            codename_box = pygame.Rect(x + 35, y, 150, row_height - 4)
+            id_box = pygame.Rect(x, y, 40, row_height - 4)
+            codename_box = pygame.Rect(x + 45, y, 150, row_height - 4)
 
             pygame.draw.rect(self.screen, color, id_box, 1)
 
