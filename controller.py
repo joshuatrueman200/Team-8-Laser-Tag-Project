@@ -6,6 +6,9 @@ from udp_manager import UDPManager
 class Controller:
     # Turn key presses into game, database, and network actions.
 
+    MAX_PLAYER_ID_LENGTH = 4
+    MAX_CODENAME_LENGTH = 15
+
     # Constructor
     def __init__(self, model, view):
         self.model = model
@@ -210,7 +213,7 @@ class Controller:
                         self.view.col = 1
                 elif event.key == pygame.K_BACKSPACE:
                     current["id"] = current["id"][:-1]
-                elif event.unicode.isdigit():
+                elif event.unicode.isdigit() and len(current["id"]) < self.MAX_PLAYER_ID_LENGTH:
                     current["id"] += event.unicode
 
             # Type the codename, then Enter opens the hardware ID box.
@@ -220,7 +223,7 @@ class Controller:
                         self.view.hardware_popup = True
                 elif event.key == pygame.K_BACKSPACE:
                     current["codename"] = current["codename"][:-1]
-                elif event.unicode.isprintable():
+                elif event.unicode.isprintable() and len(current["codename"]) < self.MAX_CODENAME_LENGTH:
                     current["codename"] += event.unicode
 
     def update(self):
