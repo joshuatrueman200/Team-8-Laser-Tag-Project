@@ -37,6 +37,17 @@ class Controller:
             return self.model.red_rows
         return self.model.green_rows
 
+    @classmethod
+    def is_valid_codename(cls, codename):
+        return (
+            1 <= len(codename) <= cls.MAX_CODENAME_LENGTH
+            and all(not character.isspace() for character in codename)
+        )
+
+    def current_player_needs_codename(self):
+        current = self.current_team_rows()[self.view.row]
+        return bool(current["id"]) and not self.is_valid_codename(current["codename"])
+
     def save_player(self, current):
         # Save the player; the hardware ID stays in the team row. Then go to the next row.
         self.view.hardware_popup = False
@@ -140,12 +151,22 @@ class Controller:
                 return
 
             if event.key == pygame.K_F9:
+                if self.current_player_needs_codename():
+                    self.status = "Enter a valid name before leaving this player"
+                    return
                 self.network_source = self.udp.source_ip
                 self.network_destination = self.udp.destination_ip
                 self.network_field = 0
                 self.view.network_screen = True
                 return
             if event.key == pygame.K_F5:
+                if any(
+                    data["id"] and not self.is_valid_codename(data["codename"])
+                    for team_rows in (self.model.red_rows, self.model.green_rows)
+                    for data in team_rows
+                ):
+                    self.status = "Enter a valid name for every player ID before starting"
+                    return
                 self.view.player_entry_screen = False
                 self.view.game_screen = True
                 return
@@ -159,11 +180,17 @@ class Controller:
                 return
 
             if event.key == pygame.K_UP:
+                if self.current_player_needs_codename():
+                    self.status = "Enter a valid name before moving to another row"
+                    return
                 self.view.row = max(0, self.view.row - 1)
                 if not self.current_team_rows()[self.view.row]["id"]:
                     self.view.col = 0
                 return
             if event.key == pygame.K_DOWN:
+                if self.current_player_needs_codename():
+                    self.status = "Enter a valid name before moving to another row"
+                    return
                 self.view.row = min(len(self.current_team_rows()) - 1, self.view.row + 1)
                 if not self.current_team_rows()[self.view.row]["id"]:
                     self.view.col = 0
@@ -192,6 +219,9 @@ class Controller:
 
             # A dot switches the team being edited.
             if event.unicode == ".":
+                if self.current_player_needs_codename():
+                    self.status = "Enter a valid name before switching teams"
+                    return
                 self.view.current_team = "green" if self.view.current_team == "red" else "red"
                 new_rows = self.current_team_rows()
                 self.view.row = self.first_incomplete_row(new_rows)
@@ -231,11 +261,17 @@ class Controller:
                     self.status = "Enter a Player ID first"
                     return
                 if event.key == pygame.K_RETURN:
-                    if current["id"] and current["codename"]:
+                    if current["id"] and self.is_valid_codename(current["codename"]):
                         self.view.hardware_popup = True
+                    else:
+                        self.status = "Name must be 1-15 characters with no spaces"
                 elif event.key == pygame.K_BACKSPACE:
                     current["codename"] = current["codename"][:-1]
-                elif event.unicode.isprintable() and len(current["codename"]) < self.MAX_CODENAME_LENGTH:
+                elif (
+                    event.unicode.isprintable()
+                    and not event.unicode.isspace()
+                    and len(current["codename"]) < self.MAX_CODENAME_LENGTH
+                ):
                     current["codename"] += event.unicode
 
     def update(self):
