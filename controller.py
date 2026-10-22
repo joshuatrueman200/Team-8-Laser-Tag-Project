@@ -44,9 +44,12 @@ class Controller:
             and all(not character.isspace() for character in codename)
         )
 
-    def current_player_needs_codename(self):
+    def current_player_is_incomplete(self):
         current = self.current_team_rows()[self.view.row]
-        return bool(current["id"]) and not self.is_valid_codename(current["codename"])
+        return bool(current["id"]) and (
+            not self.is_valid_codename(current["codename"])
+            or not current["hardware_id"]
+        )
 
     def save_player(self, current):
         # Save the player; the hardware ID stays in the team row. Then go to the next row.
@@ -151,8 +154,8 @@ class Controller:
                 return
 
             if event.key == pygame.K_F9:
-                if self.current_player_needs_codename():
-                    self.status = "Enter a valid name before leaving this player"
+                if self.current_player_is_incomplete():
+                    self.status = "Finish the name and hardware ID before leaving this player"
                     return
                 self.network_source = self.udp.source_ip
                 self.network_destination = self.udp.destination_ip
@@ -161,11 +164,14 @@ class Controller:
                 return
             if event.key == pygame.K_F5:
                 if any(
-                    data["id"] and not self.is_valid_codename(data["codename"])
+                    data["id"] and (
+                        not self.is_valid_codename(data["codename"])
+                        or not data["hardware_id"]
+                    )
                     for team_rows in (self.model.red_rows, self.model.green_rows)
                     for data in team_rows
                 ):
-                    self.status = "Enter a valid name for every player ID before starting"
+                    self.status = "Finish the name and hardware ID for every player before starting"
                     return
                 self.view.player_entry_screen = False
                 self.view.game_screen = True
@@ -180,16 +186,16 @@ class Controller:
                 return
 
             if event.key == pygame.K_UP:
-                if self.current_player_needs_codename():
-                    self.status = "Enter a valid name before moving to another row"
+                if self.current_player_is_incomplete():
+                    self.status = "Finish the name and hardware ID before moving to another row"
                     return
                 self.view.row = max(0, self.view.row - 1)
                 if not self.current_team_rows()[self.view.row]["id"]:
                     self.view.col = 0
                 return
             if event.key == pygame.K_DOWN:
-                if self.current_player_needs_codename():
-                    self.status = "Enter a valid name before moving to another row"
+                if self.current_player_is_incomplete():
+                    self.status = "Finish the name and hardware ID before moving to another row"
                     return
                 self.view.row = min(len(self.current_team_rows()) - 1, self.view.row + 1)
                 if not self.current_team_rows()[self.view.row]["id"]:
@@ -219,8 +225,8 @@ class Controller:
 
             # A dot switches the team being edited.
             if event.unicode == ".":
-                if self.current_player_needs_codename():
-                    self.status = "Enter a valid name before switching teams"
+                if self.current_player_is_incomplete():
+                    self.status = "Finish the name and hardware ID before switching teams"
                     return
                 self.view.current_team = "green" if self.view.current_team == "red" else "red"
                 new_rows = self.current_team_rows()
