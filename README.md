@@ -23,7 +23,7 @@ The VM account is `student` with password `student`.
 ls -lh /media/sf_FolderName
 ```
 
-You should see `Team-8-Laser-Tag-Project-Joshua.zip` in the output.
+You should see `Team-8-Laser-Tag-Project-main.zip` in the output.
 
 ### If you see "Permission denied"
 
@@ -43,9 +43,9 @@ Run these commands in the VM terminal, one at a time:
 
 ```bash
 mkdir -p ~/laser-tag
-cp /media/sf_FolderName/Team-8-Laser-Tag-Project-Joshua.zip ~/laser-tag/
-python3 -m zipfile -e ~/laser-tag/Team-8-Laser-Tag-Project-Joshua.zip ~/laser-tag
-cd ~/laser-tag/Team-8-Laser-Tag-Project-Joshua
+cp /media/sf_FolderName/Team-8-Laser-Tag-Project-main.zip ~/laser-tag/
+python3 -m zipfile -e ~/laser-tag/Team-8-Laser-Tag-Project-main.zip ~/laser-tag
+cd ~/laser-tag/Team-8-Laser-Tag-Project-main
 bash setup_vm.sh
 python3 main.py
 ```
