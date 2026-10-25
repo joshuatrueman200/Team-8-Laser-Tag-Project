@@ -66,13 +66,15 @@ Put the new ZIP in the same Windows folder. It will appear in the VM shared fold
 
 ## How to use the player entry screen
 
-Each team has 15 rows. Every row has an ID box and a codename box. The yellow border marks the box that receives typing.
+Each team has 15 rows. Every row has a Player ID box, a codename box, and a Hardware ID box. Player IDs and Hardware IDs must each be unique across both teams. The yellow border marks the box that receives typing.
 
 | Key                    | What it does                                                                      |
 | ---------------------- | --------------------------------------------------------------------------------- |
 | Digits                 | Type the player ID in the ID box                                                  |
 | `Enter` (ID box)       | Look up the ID. If it exists, its codename appears; otherwise type a new codename |
-| `Enter` (codename box) | Save the player to the database, add them to the team, and send the UDP message   |
+| `Enter` (codename box) | Move to the Hardware ID box |
+| `Enter` (Hardware ID box) | Validate and save the player |
+| `Tab` | Move to the next field (Player ID → codename → Hardware ID) |
 | `Tab`                  | Switch between the ID box and the codename box                                    |
 | `.` (dot)              | Switch between the red and green team                                             |
 | `Up` / `Down`          | Move to another row of the current team                                           |
