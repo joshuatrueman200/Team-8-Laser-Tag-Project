@@ -32,18 +32,23 @@ def main():
             pygame.mixer.music.play(-1, start=180)
 
         # Keep the window open until the player closes it.
-        clock = pygame.time.Clock()
         running = True
+        clock = pygame.time.Clock()
         while running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                elif event.type == pygame.WINDOWCLOSE:
+                    if controller.is_action_window_event(event):
+                        controller.stop_play_action()
+                    else:
+                        running = False
                 else:
                     controller.handle_event(event)
 
             controller.update()
             pygame.display.update()
-            clock.tick(60)
+            clock.tick(30)
     finally:
         # Close the UDP sockets and Pygame even if the game hits an error.
         if controller is not None:

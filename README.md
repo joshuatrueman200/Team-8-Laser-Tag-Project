@@ -66,34 +66,68 @@ Put the new ZIP in the same Windows folder. It will appear in the VM shared fold
 
 ## How to use the player entry screen
 
-Each team has 15 rows. Every row has a Player ID box, a codename box, and a Hardware ID box. Player IDs and Hardware IDs must each be unique across both teams. The yellow border marks the box that receives typing.
+Each team has 15 rows. Every row has an ID box and a codename box. The yellow border marks the box that receives typing.
 
 | Key                    | What it does                                                                      |
 | ---------------------- | --------------------------------------------------------------------------------- |
 | Digits                 | Type the player ID in the ID box                                                  |
 | `Enter` (ID box)       | Look up the ID. If it exists, its codename appears; otherwise type a new codename |
-| `Enter` (codename box) | Move to the Hardware ID box |
-| `Enter` (Hardware ID box) | Validate and save the player |
-| `Tab` | Move to the next field (Player ID → codename → Hardware ID) |
+| `Enter` (codename box) | Open the hardware ID popup; Enter there saves and transmits the equipment ID    |
 | `Tab`                  | Switch between the ID box and the codename box                                    |
 | `.` (dot)              | Switch between the red and green team                                             |
 | `Up` / `Down`          | Move to another row of the current team                                           |
 | `Del`                  | Delete the selected player from the database (asks `Y` / `N`)                     |
-| `F5`                   | Start the game screen                                                             |
-| `F9`                   | Open the UDP network settings                                                     |
+| `F5`                   | Open a second Play Action window and send `202` to start the traffic generator     |
+| `F9`                   | Change the destination IP used for UDP transmissions                              |
 | `F12`                  | Clear both team lists. Players stay saved in the database                         |
 
 An ID that is already in a team cannot be added again. The screen shows "ID already in use". Player 1 (`Opus`) is always created in the database if it is missing.
 
-## UDP network
+## UDP network (updated)
 
-After a player is saved, the game sends that player's ID as text to port `7500` of the destination IP. The default source and destination are both `127.0.0.1`. The game also listens on port `7501` and prints anything it receives.
+The game listens on `0.0.0.0:7501`, meaning **every IPv4 address on this VM**, regardless of which network you transmit to. The receiving address does not need to be edited and is no longer on the F9 screen.
 
-To use a different network, press `F9` on the player entry screen:
+Press **F9** on the player entry screen, edit **Transmit to IP**, then press **Enter** to save (**Esc** to cancel). By default, transmissions go to `127.0.0.1:7500` for a local test. Enter a different computer's IPv4 address or its network broadcast address (for example, `192.168.1.255`) to transmit over a network. Outgoing UDP broadcasts have `SO_BROADCAST` enabled. `0.0.0.0` is not a valid destination. The game no longer requires source and destination addresses to both be localhost or both be non-local.
 
-- `Tab` switches between the **Source IP** and **Destination/Broadcast IP** fields.
-- `Enter` saves the change and `Esc` cancels.
-- Source and destination must both be `127.x.x.x`, or both be non-local addresses.
+After confirming a player's hardware ID, the game sends **that equipment/hardware ID** to the configured destination at port `7500`. PostgreSQL still stores the player's ID and codename; hardware IDs are kept in the current team roster. The same hardware ID cannot be used by two players in one game.
+
+For remote testing, the VM's network adapter and firewalls must allow UDP between the computers. VirtualBox **Bridged Adapter** or an appropriately configured **Host-only Adapter** is often easier for LAN testing than NAT. The network you are using determines the correct broadcast address.
+
+## Play Action window and traffic generator
+
+The play-action feature uses the new `play_action_display.py` and `play_actions.py` files. Press **F5** after registering players to open a **second** Pygame window; the original player-entry window stays open. F5 sends the traffic generator's required start code (`202`) to the configured IP at port `7500`. The game continues listening on UDP port `7501` while both windows are open.
+
+Packets from the traffic generator have the format `attacker_hardware_id:victim_hardware_id` (with an optional trailing NUL byte). The game looks up player hardware IDs in the **current teams** and shows their codenames. It also recognizes base target IDs `43` and `53` and shows named bases instead of raw IDs:
+
+```text
+Opus --> BigFoot
+Pal --> Opus
+Opus --> Green Base
+BigFoot --> Red Base
+```
+
+The left name is the shooter; the right name is the player tagged or base hit. The supplied generator sends red-player hits to base `43` and green-player hits to base `53`, so the labels default to **Green Base (43)** and **Red Base (53)**. If your actual hardware assigns those colors differently, change `BASE_TARGETS` in `play_actions.py`. Hardware IDs `43` and `53` are reserved for bases and cannot be assigned to players.
+
+Friendly fire is included. Packets with unrecognized shooter/target hardware IDs are not displayed. All well-formed generator events get a `201` reply on UDP port `7500`; a same-team player hit gets the **two replies** expected by the provided generator, while a base hit gets one. Closing the additional window or pressing **Esc** while focused on it sends `221` to stop the generator. The main roster window stays open.
+
+### Run the supplied traffic generator
+
+1. Launch the game from the project directory with `python3 main.py` (or `python3 main.py --music_off`). Register at least **two red players and two green players**, giving each a unique hardware ID.
+2. In another terminal on the same machine, run `python3 tools/python_trafficgenarator_v2.py`. Enter the **hardware IDs** from those four roster entries, in red1, red2, green1, green2 order. If the generator is running elsewhere, set F9 to that machine's IP/broadcast address and update `clientAddressPort` in the generator to the game VM's reachable IP.
+3. Wait for the generator to print `waiting for start from game_software`. Then press **F5** in the game. The new window shows the countdown images for 30 seconds, followed by the live tag feed.
+4. Close the Play Action window to end the generator session. The game itself remains open.
+
+### Countdown integration
+
+The teammate's `game_timer.py` and `countdown_images/countdown0.jpg` through `countdown30.jpg` are now integrated **inside the second Play Action window**. When F5 is pressed, that window shows the 30-second sequence, then the usual live tag list. The main player-entry window is not replaced.
+
+As before, F5 immediately sends the traffic generator's `202` start message; any UDP hits arriving during the countdown are acknowledged right away and saved for display once the images finish. This keeps the existing traffic-generator handshake unchanged. Closing the Play Action window sends `221` to stop it. The teammate's extra `alert.jpg` and `countdown.jpg` assets are included unchanged, although the original countdown implementation does not use them.
+
+To run the protocol / parsing tests (no PostgreSQL or Pygame needed):
+
+```bash
+python3 -m unittest -v test_play_actions.py
+```
 
 ## Team members
 
