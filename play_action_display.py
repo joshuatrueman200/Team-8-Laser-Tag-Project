@@ -1,7 +1,11 @@
-"""Second Pygame window for live action. Countdown/images intentionally omitted."""
+"""Second Pygame window for the countdown and live action."""
+
+from pathlib import Path
 
 import pygame
 from pygame._sdl2.video import Renderer, Texture, Window
+
+from game_timer import GameTimer
 
 
 class PlayActionDisplay:
@@ -13,11 +17,18 @@ class PlayActionDisplay:
         self.max_actions = 14
         self.textures = {}
 
+        # Use the teammate's countdown without changing the UDP/controller flow.
+        self.game_timer = GameTimer()
+        self.game_timer.start()
+        self.countdown_texture = None
+        self.countdown_frame = None
+
     @property
     def window_id(self):
         return self.window.id
 
     def add_action(self, label):
+        # Incoming UDP events are still collected during the countdown.
         self.actions.append(label)
         self.actions = self.actions[-self.max_actions:]
 
@@ -31,12 +42,19 @@ class PlayActionDisplay:
         self.renderer.blit(texture, pygame.Rect(x, y, texture.width, texture.height))
 
     def render(self):
+        self.game_timer.update()
         self.renderer.draw_color = (13, 16, 24, 255)
         self.renderer.clear()
+
+        if self.game_timer.phase == 'countdown':
+            self.draw_countdown_and_images()
+            self.renderer.present()
+            return
+
+        # Once the countdown finishes, return to the existing live-hit screen.
+        self.countdown_texture = None
         self._draw_text("PLAY ACTION", 30, 20, 44)
         self._draw_text("Live hits (shooter --> player or base)", 30, 67, 24, (170, 180, 195))
-
-        self.draw_countdown_and_images()
 
         if not self.actions:
             self._draw_text("Waiting for tag events on UDP port 7501...", 30, 246, 26)
@@ -48,20 +66,21 @@ class PlayActionDisplay:
         self.renderer.present()
 
     def draw_countdown_and_images(self):
-        """TODO (teammate): add the 30-second countdown and images here.
+        """Show the teammate's countdownN.jpg sequence in this second window."""
+        seconds = max(0, min(30, self.game_timer.remaining()))
+        if self.countdown_frame != seconds:
+            image_path = Path(__file__).resolve().parent / "countdown_images" / f"countdown{seconds}.jpg"
+            surface = pygame.image.load(str(image_path)).convert()
+            surface = pygame.transform.smoothscale(surface, self.window.size)
+            # Keep only the current image on the GPU (not all 31 large photos).
+            self.countdown_texture = Texture.from_surface(self.renderer, surface)
+            self.countdown_frame = seconds
 
-        This reserved region is intentionally a placeholder: there is no
-        running countdown or image sequence in this implementation.
-        """
-        placeholder = pygame.Rect(30, 105, 700, 100)
-        self.renderer.draw_color = (90, 100, 118, 255)
-        self.renderer.draw_rect(placeholder)
-        self._draw_text("30-second countdown / image area", 52, 129, 27)
-        self._draw_text("Placeholder: teammate will implement", 52, 164, 22,
-                        (170, 180, 195))
+        self.renderer.blit(self.countdown_texture, pygame.Rect((0, 0), self.window.size))
 
     def close(self):
         # Destroy the renderer first, then its SDL2 window.
+        self.countdown_texture = None
         self.textures.clear()
         self.renderer = None
         self.window.destroy()

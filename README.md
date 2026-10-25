@@ -114,10 +114,14 @@ Friendly fire is included. Packets with unrecognized shooter/target hardware IDs
 
 1. Launch the game from the project directory with `python3 main.py` (or `python3 main.py --music_off`). Register at least **two red players and two green players**, giving each a unique hardware ID.
 2. In another terminal on the same machine, run `python3 tools/python_trafficgenarator_v2.py`. Enter the **hardware IDs** from those four roster entries, in red1, red2, green1, green2 order. If the generator is running elsewhere, set F9 to that machine's IP/broadcast address and update `clientAddressPort` in the generator to the game VM's reachable IP.
-3. Wait for the generator to print `waiting for start from game_software`. Then press **F5** in the game. A new window opens and lines appear as packets arrive.
+3. Wait for the generator to print `waiting for start from game_software`. Then press **F5** in the game. The new window shows the countdown images for 30 seconds, followed by the live tag feed.
 4. Close the Play Action window to end the generator session. The game itself remains open.
 
-**Teammate handoff:** `PlayActionDisplay.draw_countdown_and_images()` is the reserved place for the 30-second countdown and image sequence. This patch does **not** implement a countdown or load the images.
+### Countdown integration
+
+The teammate's `game_timer.py` and `countdown_images/countdown0.jpg` through `countdown30.jpg` are now integrated **inside the second Play Action window**. When F5 is pressed, that window shows the 30-second sequence, then the usual live tag list. The main player-entry window is not replaced.
+
+As before, F5 immediately sends the traffic generator's `202` start message; any UDP hits arriving during the countdown are acknowledged right away and saved for display once the images finish. This keeps the existing traffic-generator handshake unchanged. Closing the Play Action window sends `221` to stop it. The teammate's extra `alert.jpg` and `countdown.jpg` assets are included unchanged, although the original countdown implementation does not use them.
 
 To run the protocol / parsing tests (no PostgreSQL or Pygame needed):
 
