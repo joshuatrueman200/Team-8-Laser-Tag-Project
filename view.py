@@ -42,8 +42,6 @@ class View:
         self.draw_panel(450, (0, 205, 0), "GREEN TEAM", self.model.green_rows, self.current_team == "green")
         self.draw_instructions()
         self.show_game_controls()
-        if self.hardware_popup:
-            self.draw_hardware_popup()
 
     def show_game_screen(self):
         self.screen.fill((0, 0, 0))
@@ -100,27 +98,6 @@ class View:
             font = pygame.font.Font(None, 22)
             self.screen.blit(font.render(self.status[:95], True, (255, 255, 0)), (80, 565))
 
-    def draw_hardware_popup(self):
-        box = pygame.Rect(0, 0, 360, 130)
-        box.center = self.screen.get_rect().center
-        pygame.draw.rect(self.screen, (30, 30, 30), box)
-        pygame.draw.rect(self.screen, (255, 255, 0), box, 2)
-
-        font = pygame.font.Font(None, 26)
-        small = pygame.font.Font(None, 20)
-
-        title = font.render("Enter Hardware ID", True, (255, 255, 255))
-        self.screen.blit(title, title.get_rect(center=(box.centerx, box.y + 28)))
-
-        rows = self.model.red_rows if self.current_team == "red" else self.model.green_rows
-        field = pygame.Rect(box.x + 90, box.y + 50, 180, 32)
-        pygame.draw.rect(self.screen, (255, 255, 255), field, 1)
-        number = font.render(rows[self.row]["hardware_id"], True, (255, 255, 255))
-        self.screen.blit(number, (field.x + 6, field.y + 7))
-
-        hint = small.render("ENTER: confirm   ESC: cancel", True, (200, 200, 200))
-        self.screen.blit(hint, hint.get_rect(center=(box.centerx, box.y + 108)))
-
     def update(self):
         if self.splash_screen:
             self.show_splash_screen()
@@ -141,57 +118,92 @@ class View:
         font = pygame.font.Font(None, 24)
         title = font.render(label, True, color)
         self.screen.blit(title, (x, 40))
-
+        tiny = pygame.font.Font(None, 16)
+        # Keep each heading aligned with its field and leave clear gaps between columns.
+        id_x = x
+        name_x = x + 70
+        hardware_x = x + 195
+        self.screen.blit(tiny.render("PLAYER ID", True, color), (id_x, 65))
+        self.screen.blit(tiny.render("NAME", True, color), (name_x, 65))
+        self.screen.blit(tiny.render("HW ID", True, color), (hardware_x, 65))
 
         row_height = 30
         for i, data in enumerate(rows):
             y = 80 + i * row_height
-            id_box = pygame.Rect(x, y, 40, row_height - 4)
-            codename_box = pygame.Rect(x + 45, y, 150, row_height - 4)
+            id_box = pygame.Rect(id_x, y, 62, row_height - 4)
+            codename_box = pygame.Rect(name_x, y, 118, row_height - 4)
+            hardware_box = pygame.Rect(hardware_x, y, 82, row_height - 4)
 
             pygame.draw.rect(self.screen, color, id_box, 1)
-
             pygame.draw.rect(self.screen, color, codename_box, 1)
+            pygame.draw.rect(self.screen, color, hardware_box, 1)
 
             # Draw player text only when this spot has a value.
-            if data["id"]:
-                id_text = font.render(data["id"], True, (255, 255, 255))
-                self.screen.blit(id_text, (id_box.x + 3, id_box.y + 5))
-            if data["codename"]:
-                codename_text = font.render(data["codename"], True, (255, 255, 255))
-                self.screen.blit(codename_text, (codename_box.x + 3, codename_box.y + 5))
+            # Clip displayed values to their own column so long IDs/names never
+            # spill into and visually collide with the next field.
+            for key, box in (("id", id_box), ("codename", codename_box),
+                             ("hardware_id", hardware_box)):
+                value = str(data.get(key, "") or "")
+                if value:
+                    available_width = box.width - 6
+                    shown = value
+                    while shown and font.size(shown)[0] > available_width:
+                        shown = shown[:-1]
+                    if shown != value and len(shown) > 1:
+                        shown = shown[:-1] + "…"
+                    value_surface = font.render(shown, True, (255, 255, 255))
+                    self.screen.blit(value_surface, (box.x + 3, box.y + 5))
 
             # Mark the cell that will get the next key press.
             if is_active and i == self.row:
-                highlight_box = id_box if self.col == 0 else codename_box
+                highlight_box = (id_box, codename_box, hardware_box)[self.col]
                 pygame.draw.rect(self.screen, (255, 255, 0), highlight_box.inflate(4, 4), 2)
 
     def draw_instructions(self):
-        font = pygame.font.Font(None, 20)
+        # Keep instructions inside the narrow gap between the two team panels.
+        # Wrap each instruction so it never overlaps the player input columns.
+        font = pygame.font.Font(None, 16)
+        max_width = 112
+        fields = [
+            ["Write your Player ID", "ENTER: look up name", "TAB: next field"],
+            ["Write your Codename", "ENTER: hardware ID", "TAB: next field"],
+            ["Write Hardware ID", "ENTER: save player", "TAB: next field"],
+        ]
+        instructions = list(fields[self.col]) + ["Press '.' to switch team"]
 
-        if self.col == 0:
-            lines = [
-                "Write your Player ID",
-                "TAB or ENTER moves to",
-                "the codename field."
-            ]
-        else:
-            lines = [
-                "Write your Codename",
-                "TAB returns to the ID.",
-                "ENTER saves the player."
-            ]
+        wrapped_lines = []
+        for instruction in instructions:
+            words = instruction.split()
+            line = ""
+            for word in words:
+                candidate = word if not line else f"{line} {word}"
+                if font.size(candidate)[0] <= max_width:
+                    line = candidate
+                else:
+                    if line:
+                        wrapped_lines.append(line)
+                    line = word
+            if line:
+                wrapped_lines.append(line)
+            wrapped_lines.append("")
+        if wrapped_lines and wrapped_lines[-1] == "":
+            wrapped_lines.pop()
 
-        lines += ["", "Press '.' to", "switch team"]
-
-        x_center = 342
-        y = 200
-
-        for line in lines:
-            text = font.render(line, True, (255, 255, 255))
-            text_rect = text.get_rect(center=(x_center, y))
-            self.screen.blit(text, text_rect)
-            y += 25
+        # Center each instruction line in the actual gap between the panels:
+        # the left hardware column ends at x=327 and the right panel begins at x=450.
+        left_edge_of_gap = 327
+        right_edge_of_gap = 450
+        x_center = (left_edge_of_gap + right_edge_of_gap) // 2
+        y = 190
+        line_height = 17
+        for line in wrapped_lines:
+            if line:
+                text = font.render(line, True, (255, 255, 255))
+                text_rect = text.get_rect(midtop=(x_center - text.get_width() // 2, y))
+                # Explicitly center the rendered line horizontally on the gap.
+                text_rect.centerx = x_center
+                self.screen.blit(text, text_rect)
+            y += line_height
 
 
 

@@ -9,6 +9,7 @@ class Controller:
 
     MAX_PLAYER_ID_LENGTH = 4
     MAX_CODENAME_LENGTH = 15
+    MAX_HARDWARE_ID_LENGTH = 8
 
     # Constructor
     def __init__(self, model, view):
@@ -30,7 +31,7 @@ class Controller:
             (team, index)
             for team, rows in (("red", self.model.red_rows), ("green", self.model.green_rows))
             for index, data in enumerate(rows)
-            if data["id"] and data["codename"]
+            if data["id"] and data["codename"] and data["hardware_id"]
         }
 
     def current_team_rows(self):
@@ -54,9 +55,7 @@ class Controller:
         )
 
     def save_player(self, current):
-        # Save the player; the hardware ID stays in the team row. Then go to the next row.
-        self.view.hardware_popup = False
-
+        # Save the player after all three fields have been entered.
         previous_codename = self.model.database_players.get(current["id"])
         try:
             is_new_player = self.model.add_player(
@@ -82,7 +81,7 @@ class Controller:
     def first_incomplete_row(self, rows):
         # Find an open spot, or use the last spot if the team is full.
         for i, data in enumerate(rows):
-            if not data["id"] or not data["codename"]:
+            if not data["id"] or not data["codename"] or not data["hardware_id"]:
                 return i
         return len(rows) - 1
 
@@ -129,21 +128,6 @@ class Controller:
 
         # Only handle roster keys on the player entry screen.
         if self.view.player_entry_screen:
-            # Hardware ID box: type the number, Enter saves, Esc cancels.
-            if self.view.hardware_popup:
-                current = self.current_team_rows()[self.view.row]
-                if event.key == pygame.K_ESCAPE:
-                    self.view.hardware_popup = False
-                    current["hardware_id"] = ""
-                elif event.key == pygame.K_RETURN:
-                    if current["hardware_id"]:
-                        self.save_player(current)
-                elif event.key == pygame.K_BACKSPACE:
-                    current["hardware_id"] = current["hardware_id"][:-1]
-                elif event.unicode.isdigit():
-                    current["hardware_id"] += event.unicode
-                return
-
             # Ask before removing a saved player for good.
             if self.pending_delete is not None:
                 if event.key == pygame.K_y:
@@ -228,10 +212,13 @@ class Controller:
 
             if event.key == pygame.K_TAB:
                 current = self.current_team_rows()[self.view.row]
-                if self.view.col == 0 and not current["id"]:
+                if self.view.col > 0 and not current["id"]:
                     self.status = "Enter a Player ID first"
                     return
-                self.view.col = 1 - self.view.col
+                if self.view.col == 2 and not self.is_valid_codename(current["codename"]):
+                    self.status = "Enter a valid codename first"
+                    return
+                self.view.col = (self.view.col + 1) % 3
                 return
 
             # A dot switches the team being edited.
@@ -271,25 +258,46 @@ class Controller:
                 elif event.unicode.isdigit() and len(current["id"]) < self.MAX_PLAYER_ID_LENGTH:
                     current["id"] += event.unicode
 
-            # Type the codename, then Enter opens the hardware ID box.
-            else:
+            # Codename field.
+            elif self.view.col == 1:
                 if not current["id"]:
                     self.view.col = 0
                     self.status = "Enter a Player ID first"
                     return
                 if event.key == pygame.K_RETURN:
-                    if current["id"] and self.is_valid_codename(current["codename"]):
-                        self.view.hardware_popup = True
+                    if self.is_valid_codename(current["codename"]):
+                        self.view.col = 2
                     else:
                         self.status = "Name must be 1-15 characters with no spaces"
                 elif event.key == pygame.K_BACKSPACE:
                     current["codename"] = current["codename"][:-1]
-                elif (
-                    event.unicode.isprintable()
-                    and not event.unicode.isspace()
-                    and len(current["codename"]) < self.MAX_CODENAME_LENGTH
-                ):
+                elif event.unicode.isprintable() and not event.unicode.isspace() and len(current["codename"]) < self.MAX_CODENAME_LENGTH:
                     current["codename"] += event.unicode
+
+            # Hardware ID field. Must be unique across both teams.
+            else:
+                if not current["id"] or not self.is_valid_codename(current["codename"]):
+                    self.status = "Enter a valid Player ID and codename first"
+                    self.view.col = 0 if not current["id"] else 1
+                    return
+                if event.key == pygame.K_RETURN:
+                    if not current["hardware_id"]:
+                        self.status = "Enter a Hardware ID"
+                        return
+                    duplicate = any(
+                        data is not current and data["hardware_id"] == current["hardware_id"]
+                        for team_rows in (self.model.red_rows, self.model.green_rows)
+                        for data in team_rows
+                    )
+                    if duplicate:
+                        self.status = "Hardware ID already in use"
+                        current["hardware_id"] = ""
+                        return
+                    self.save_player(current)
+                elif event.key == pygame.K_BACKSPACE:
+                    current["hardware_id"] = current["hardware_id"][:-1]
+                elif event.unicode.isdigit() and len(current["hardware_id"]) < self.MAX_HARDWARE_ID_LENGTH:
+                    current["hardware_id"] += event.unicode
 
     def update(self):
         self.game_timer.update()
