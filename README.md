@@ -47,10 +47,10 @@ cp /media/sf_FolderName/Team-8-Laser-Tag-Project-main.zip ~/laser-tag/
 python3 -m zipfile -e ~/laser-tag/Team-8-Laser-Tag-Project-main.zip ~/laser-tag
 cd ~/laser-tag/Team-8-Laser-Tag-Project-main
 bash setup_vm.sh
-python3 main.py
+.venv/bin/python main.py
 ```
 
-`setup_vm.sh` checks for Pygame and the PostgreSQL Python driver. If either is missing, it installs Debian packages `python3-pygame` and `python3-psycopg2`; your VM account may need `sudo` access. The script does not install PostgreSQL or change its database or tables. The game uses the existing `photon` database by default.
+`setup_vm.sh` creates a project-local `.venv` and installs the pinned dependencies from `requirements.txt`, including a Pygame build that provides `pygame._sdl2`. It may install Debian's `python3-venv` package first, which can require `sudo` access. The script does not install PostgreSQL or change its database or tables. The game uses the existing `photon` database by default. Run the game with `.venv/bin/python main.py` so it uses the installed dependencies.
 
 ## View saved players
 
