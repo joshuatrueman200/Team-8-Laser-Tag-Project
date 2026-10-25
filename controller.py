@@ -1,6 +1,7 @@
 import pygame
 from database import PlayerDatabaseError
 from udp_manager import UDPManager
+from game_timer import GameTimer
 
 
 class Controller:
@@ -21,6 +22,7 @@ class Controller:
         self.network_destination = self.udp.destination_ip
         self.status = ""
         self.pending_delete = None
+        self.game_timer = GameTimer()
 
     def _refresh_added_rows(self):
         # Track which filled spots are already saved.
@@ -117,6 +119,14 @@ class Controller:
             return
 
 
+        if self.view.game_screen:
+            if event.key == pygame.K_F12:
+                self.game_timer.reset()
+                self.view.game_screen = False
+                self.view.player_entry_screen = True
+                self.status = "Returned to player entry"
+            return
+
         # Only handle roster keys on the player entry screen.
         if self.view.player_entry_screen:
             # Hardware ID box: type the number, Enter saves, Esc cancels.
@@ -175,6 +185,7 @@ class Controller:
                     return
                 self.view.player_entry_screen = False
                 self.view.game_screen = True
+                self.game_timer.start()
                 return
 
             if event.key == pygame.K_F12:
@@ -281,6 +292,8 @@ class Controller:
                     current["codename"] += event.unicode
 
     def update(self):
+        self.game_timer.update()
+        self.view.game_timer = self.game_timer
         for data, address in self.udp.receive_messages():
             print(f"UDP received from {address}: {data!r}")
         self.view.network_source = self.network_source

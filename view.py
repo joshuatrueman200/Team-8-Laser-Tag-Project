@@ -20,6 +20,7 @@ class View:
         self.splash_screen = True
         self.player_entry_screen = False
         self.game_screen = False
+        self.game_timer = None
         self.network_screen = False
         self.network_source = "127.0.0.1"
         self.network_destination = "127.0.0.1"
@@ -46,10 +47,41 @@ class View:
 
     def show_game_screen(self):
         self.screen.fill((0, 0, 0))
-        font = pygame.font.Font(None, 48)
-        title = font.render("Game screen", True, (255, 255, 255))
-        title_rect = title.get_rect(center=self.screen.get_rect().center)
-        self.screen.blit(title, title_rect)
+        timer = self.game_timer
+        width = self.screen.get_width()
+        title_font = pygame.font.Font(None, 58)
+        timer_font = pygame.font.Font(None, 145)
+        hint_font = pygame.font.Font(None, 26)
+
+        if timer.phase == 'countdown':
+            import os
+
+            seconds = max(0, min(30, timer.remaining()))
+            image_path = os.path.join(
+                os.path.dirname(__file__),
+                "countdown_images",
+                f"countdown{seconds}.jpg"
+            )
+
+            countdown_image = pygame.image.load(image_path).convert()
+            countdown_image = pygame.transform.scale(
+                countdown_image,
+                self.screen.get_size()
+            )
+            self.screen.blit(countdown_image, (0, 0))
+            return
+        elif timer.phase == 'playing':
+            title, value, color = 'GAME IN PROGRESS', '', (255, 255, 255)
+        else:
+            title, value, color = 'READY', '', (255, 255, 255)
+
+        for message, font, y, ink in (
+            (title, title_font, 155, color),
+            (value, timer_font, 290, color),
+            ('F12: Return to player entry', hint_font, 490, (180, 180, 180)),
+        ):
+            surface = font.render(message, True, ink)
+            self.screen.blit(surface, surface.get_rect(center=(width // 2, y)))
 
     def show_network_screen(self):
         self.screen.fill((0, 0, 0))
