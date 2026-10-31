@@ -205,6 +205,17 @@ class Controller:
                     else:
                         self.status = "Game countdown is in progress"
                     return
+                if any(
+                    not any(
+                        data["id"]
+                        and self.is_valid_codename(data["codename"])
+                        and data["hardware_id"]
+                        for data in team_rows
+                    )
+                    for team_rows in (self.model.red_rows, self.model.green_rows)
+                ):
+                    self.status = "Add at least one player to each team before starting"
+                    return
                 try:
                     team_rosters = {
                         team: [

@@ -4,11 +4,44 @@ from pathlib import Path
 import unittest
 from types import SimpleNamespace
 
+import pygame
+
 from controller import Controller
 from game_timer import GameTimer
 
 
 class CountdownIntegrationTests(unittest.TestCase):
+    def test_controller_requires_a_player_on_each_team_before_start(self):
+        blank_team = [
+            {"id": "", "codename": "", "hardware_id": ""}
+            for _ in range(15)
+        ]
+        controller = Controller.__new__(Controller)
+        controller.model = SimpleNamespace(
+            red_rows=blank_team,
+            green_rows=[row.copy() for row in blank_team],
+        )
+        controller.view = SimpleNamespace(
+            network_screen=False,
+            player_entry_screen=True,
+            hardware_popup=False,
+            row=0,
+            current_team="red",
+        )
+        controller.pending_delete = None
+        controller.action_display = None
+        controller.status = ""
+
+        controller.handle_event(
+            SimpleNamespace(type=pygame.KEYDOWN, key=pygame.K_F5, unicode="")
+        )
+
+        self.assertEqual(
+            controller.status,
+            "Add at least one player to each team before starting",
+        )
+        self.assertIsNone(controller.action_display)
+
     def test_countdown_transitions_into_play(self):
         now = [100.0]
         timer = GameTimer(clock=lambda: now[0])

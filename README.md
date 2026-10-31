@@ -77,7 +77,7 @@ Each team has 15 rows. Every row has an ID box and a codename box. The yellow bo
 | `.` (dot)              | Switch between the red and green team                                             |
 | `Up` / `Down`          | Move to another row of the current team                                           |
 | `Del`                  | Delete the selected player from the database (asks `Y` / `N`)                     |
-| `F5`                   | Open a second Play Action window; send `202` after its 30-second countdown          |
+| `F5`                   | Start with at least one player on each team; send `202` after the 30-second countdown |
 | `F9`                   | Change the destination IP used for UDP transmissions                              |
 | `F12`                  | Clear both team lists. Players stay saved in the database                         |
 
