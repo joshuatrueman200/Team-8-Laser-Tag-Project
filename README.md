@@ -77,7 +77,7 @@ Each team has 15 rows. Every row has an ID box and a codename box. The yellow bo
 | `.` (dot)              | Switch between the red and green team                                             |
 | `Up` / `Down`          | Move to another row of the current team                                           |
 | `Del`                  | Delete the selected player from the database (asks `Y` / `N`)                     |
-| `F5`                   | Open a second Play Action window and send `202` to start the traffic generator     |
+| `F5`                   | Open a second Play Action window; send `202` after its 30-second countdown          |
 | `F9`                   | Change the destination IP used for UDP transmissions                              |
 | `F12`                  | Clear both team lists. Players stay saved in the database                         |
 
@@ -95,7 +95,7 @@ For remote testing, the VM's network adapter and firewalls must allow UDP betwee
 
 ## Play Action window and traffic generator
 
-The play-action feature uses the new `play_action_display.py` and `play_actions.py` files. Press **F5** after registering players to open a **second** Pygame window; the original player-entry window stays open. F5 sends the traffic generator's required start code (`202`) to the configured IP at port `7500`. The game continues listening on UDP port `7501` while both windows are open.
+The play-action feature uses the new `play_action_display.py` and `play_actions.py` files. Press **F5** after registering players to open a **second** Pygame window; the original player-entry window stays open. The Play Action window shows a 30-second countdown, then sends the traffic generator's required start code (`202`) to the configured IP at port `7500` and starts a six-minute game timer. The player-entry window displays the countdown and game time. Pressing F5 again focuses the existing game window rather than starting another game.
 
 Packets from the traffic generator have the format `attacker_hardware_id:victim_hardware_id` (with an optional trailing NUL byte). The game looks up player hardware IDs in the **current teams** and shows their codenames. It also recognizes base target IDs `43` and `53` and shows named bases instead of raw IDs:
 
@@ -108,20 +108,20 @@ BigFoot --> Red Base
 
 The left name is the shooter; the right name is the player tagged or base hit. The supplied generator sends red-player hits to base `43` and green-player hits to base `53`, so the labels default to **Green Base (43)** and **Red Base (53)**. If your actual hardware assigns those colors differently, change `BASE_TARGETS` in `play_actions.py`. Hardware IDs `43` and `53` are reserved for bases and cannot be assigned to players.
 
-Friendly fire is included. Packets with unrecognized shooter/target hardware IDs are not displayed. All well-formed generator events get a `201` reply on UDP port `7500`; a same-team player hit gets the **two replies** expected by the provided generator, while a base hit gets one. Closing the additional window or pressing **Esc** while focused on it sends `221` to stop the generator. The main roster window stays open.
+Friendly fire is included. Each recognized hit—including friendly fire and base hits—adds one point to the attacker's team. The Play Action window displays both team rosters, their scores, and the live hit feed. When six minutes expire, the game sends `221` to stop the generator and shows a final scoreboard and winner (or tie) in the Play Action window. Packets with unrecognized shooter/target hardware IDs are not displayed. All well-formed generator events get a `201` reply on UDP port `7500`; a same-team player hit gets the **two replies** expected by the provided generator, while a base hit gets one. Closing the additional window or pressing **Esc** while focused on it sends `221` to stop the generator, but only if play has started. The main roster window stays open.
 
 ### Run the supplied traffic generator
 
 1. Launch the game from the project directory with `python3 main.py` (or `python3 main.py --music_off`). Register at least **two red players and two green players**, giving each a unique hardware ID.
 2. In another terminal on the same machine, run `python3 tools/python_trafficgenarator_v2.py`. Enter the **hardware IDs** from those four roster entries, in red1, red2, green1, green2 order. If the generator is running elsewhere, set F9 to that machine's IP/broadcast address and update `clientAddressPort` in the generator to the game VM's reachable IP.
-3. Wait for the generator to print `waiting for start from game_software`. Then press **F5** in the game. The new window shows the countdown images for 30 seconds, followed by the live tag feed.
-4. Close the Play Action window to end the generator session. The game itself remains open.
+3. Wait for the generator to print `waiting for start from game_software`. Then press **F5** in the game. The new window shows the countdown images for 30 seconds; the game starts after the countdown and runs for six minutes.
+4. The Play Action window shows the final score and winner when the timer expires. The game itself remains open.
 
 ### Countdown integration
 
-The teammate's `game_timer.py` and `countdown_images/countdown0.jpg` through `countdown30.jpg` are now integrated **inside the second Play Action window**. When F5 is pressed, that window shows the 30-second sequence, then the usual live tag list. The main player-entry window is not replaced.
+The teammate's `game_timer.py` and `countdown_images/countdown0.jpg` through `countdown30.jpg` are integrated **inside the second Play Action window**. When F5 is pressed, that window shows the 30-second sequence, then starts the generator and six-minute game timer, and displays the teams, scores, and live tag list. The main player-entry window displays the active timer and is not replaced.
 
-As before, F5 immediately sends the traffic generator's `202` start message; any UDP hits arriving during the countdown are acknowledged right away and saved for display once the images finish. This keeps the existing traffic-generator handshake unchanged. Closing the Play Action window sends `221` to stop it. The teammate's extra `alert.jpg` and `countdown.jpg` assets are included unchanged, although the original countdown implementation does not use them.
+The traffic generator's `202` start message is sent only after the countdown completes. At six minutes, the game sends `221` and shows the final scoreboard. Closing the Play Action window after the game starts also sends `221` to stop it. The teammate's extra `alert.jpg` and `countdown.jpg` assets are included unchanged, although the countdown implementation does not use them.
 
 To run the protocol / parsing tests (no PostgreSQL or Pygame needed):
 

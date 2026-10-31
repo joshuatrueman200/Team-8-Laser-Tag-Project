@@ -18,6 +18,7 @@ class Hit:
     target: str
     friendly_fire: bool
     base_hit: bool = False
+    attacker_team: str = ""
 
     @property
     def label(self):
@@ -50,9 +51,11 @@ def decode_hit(packet, players):
 
     if parts[1] in BASE_TARGETS:
         # Base hits display a readable name and get a single 201 acknowledgment.
-        return Hit(attacker[0], BASE_TARGETS[parts[1]], False, base_hit=True)
+        return Hit(attacker[0], BASE_TARGETS[parts[1]], False, base_hit=True,
+                   attacker_team=attacker[1])
 
     target = players.get(parts[1])
     if target is None:
         return None
-    return Hit(attacker[0], target[0], attacker[1] == target[1])
+    return Hit(attacker[0], target[0], attacker[1] == target[1],
+               attacker_team=attacker[1])

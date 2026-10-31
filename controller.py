@@ -21,6 +21,8 @@ class Controller:
         self.network_destination = self.udp.destination_ip
         self.action_display = None
         self.action_roster = {}
+        self.game_started = False
+        self.game_over_handled = False
         self.last_traffic_sender = None
         self.status = ""
         self.pending_delete = None
@@ -195,19 +197,40 @@ class Controller:
                     return
                 if self.action_display is not None:
                     self.action_display.window.focus()
+                    phase = self.action_display.game_timer.phase
+                    if phase == "finished":
+                        self.status = "Game is over; showing the final scoreboard"
+                    elif phase == "playing":
+                        self.status = "Game is in progress; showing Play Action"
+                    else:
+                        self.status = "Game countdown is in progress"
                     return
                 try:
-                    self.action_display = PlayActionDisplay()
+                    team_rosters = {
+                        team: [
+                            data["codename"]
+                            for data in rows
+                            if data["id"] and data["codename"]
+                        ]
+                        for team, rows in (
+                            ("red", self.model.red_rows),
+                            ("green", self.model.green_rows),
+                        )
+                    }
+                    self.action_display = PlayActionDisplay(team_rosters)
                     self.action_roster = roster_by_hardware(self.model)
                     self.last_traffic_sender = None
-                    self.udp.start_game()
+                    self.game_started = False
+                    self.game_over_handled = False
+                    self.view.game_final_score = None
+                    self.view.game_in_progress = True
                 except (OSError, pygame.error, ImportError) as error:
                     self.status = f"Unable to start play action: {error}"
                     if self.action_display is not None:
                         self.action_display.close()
                         self.action_display = None
                 else:
-                    self.status = "Play action open; listening for tag events on UDP 7501"
+                    self.status = "Play action countdown started; game begins in 30 seconds"
                 return
 
             if event.key == pygame.K_F12:
@@ -325,25 +348,80 @@ class Controller:
         if self.action_display is None:
             return
         # Stop the traffic generator with its expected termination message.
-        try:
-            self.udp.stop_game(self.last_traffic_sender)
-        except OSError as error:
-            self.status = f"Could not signal game stop: {error}"
+        if self.game_started:
+            try:
+                self.udp.stop_game(self.last_traffic_sender)
+            except OSError as error:
+                self.status = f"Could not signal game stop: {error}"
+            else:
+                self.status = "Play action closed"
         else:
-            self.status = "Play action closed"
+            self.status = "Play action closed before game start"
         self.action_display.close()
         self.action_display = None
         self.action_roster = {}
+        self.game_started = False
+        self.game_over_handled = False
         self.last_traffic_sender = None
+        self.view.game_timer_label = ""
+        self.view.game_in_progress = False
 
     def update(self):
+        if self.action_display is not None:
+            self.action_display.game_timer.update()
+            phase = self.action_display.game_timer.phase
+            if phase == "countdown":
+                self.view.game_timer_label = (
+                    f"GAME STARTS IN {self.action_display.game_timer.formatted()}"
+                )
+            elif phase == "playing":
+                self.view.game_timer_label = (
+                    f"GAME TIME {self.action_display.game_timer.formatted()}"
+                )
+            if (
+                phase == "playing"
+                and not self.game_started
+            ):
+                try:
+                    self.udp.start_game()
+                except OSError as error:
+                    self.status = f"Unable to start traffic generator: {error}"
+                    self.action_display.close()
+                    self.action_display = None
+                    self.action_roster = {}
+                    self.last_traffic_sender = None
+                    self.view.game_timer_label = ""
+                    self.view.game_in_progress = False
+                else:
+                    self.game_started = True
+                    self.status = "Play action started; listening for tag events on UDP 7501"
+            elif phase == "finished" and not self.game_over_handled:
+                if self.game_started:
+                    try:
+                        self.udp.stop_game(self.last_traffic_sender)
+                    except OSError as error:
+                        self.status = f"Game ended, but could not stop traffic generator: {error}"
+                    else:
+                        self.status = "Game over"
+                else:
+                    self.status = "Game over"
+                self.game_started = False
+                self.game_over_handled = True
+                self.view.game_timer_label = ""
+                self.view.game_final_score = (
+                    self.action_display.scores["red"],
+                    self.action_display.scores["green"],
+                )
+                self.view.status = self.status
+
         for data, address in self.udp.receive_messages():
-            if self.action_display is None:
+            if self.action_display is None or not self.game_started:
                 print(f"UDP received from {address}: {data!r}")
                 continue
             hit = decode_hit(data, self.action_roster)
             if hit is not None:
                 self.action_display.add_action(hit.label)
+                self.action_display.add_score(hit.attacker_team)
                 print(f"TAG: {hit.label}")
             else:
                 # Ignore malformed packets and unknown hardware IDs.

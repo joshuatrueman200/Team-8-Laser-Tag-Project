@@ -25,6 +25,7 @@ class PlayActionTests(unittest.TestCase):
         event = decode_hit(b"11:22\x00", self.players)
         self.assertEqual(event.label, "Opus --> BigFoot")
         self.assertFalse(event.friendly_fire)
+        self.assertEqual(event.attacker_team, "red")
 
     def test_friendly_fire(self):
         event = decode_hit(b"11:33\x00", self.players)
@@ -36,6 +37,7 @@ class PlayActionTests(unittest.TestCase):
         self.assertEqual(red_player_hit.label, "Opus --> Green Base")
         self.assertTrue(red_player_hit.base_hit)
         self.assertFalse(red_player_hit.friendly_fire)
+        self.assertEqual(red_player_hit.attacker_team, "red")
 
         green_player_hit = decode_hit(b"22:53\x00", self.players)
         self.assertEqual(green_player_hit.label, "BigFoot --> Red Base")

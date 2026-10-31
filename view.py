@@ -24,6 +24,9 @@ class View:
         self.network_destination = "127.0.0.1"
         self.status = ""
         self.hardware_popup = False
+        self.game_timer_label = ""
+        self.game_final_score = None
+        self.game_in_progress = False
 
     # Show the logo before the player list.
     def show_splash_screen(self):
@@ -37,6 +40,7 @@ class View:
         self.screen.fill((0, 0, 0))
         self.draw_panel(50, (255, 0, 0), "RED TEAM", self.model.red_rows, self.current_team == "red")
         self.draw_panel(450, (0, 205, 0), "GREEN TEAM", self.model.green_rows, self.current_team == "green")
+        self.draw_game_timer()
         self.draw_instructions()
         self.show_game_controls()
         if self.hardware_popup:
@@ -51,6 +55,7 @@ class View:
 
     def show_network_screen(self):
         self.screen.fill((0, 0, 0))
+        self.draw_game_timer()
         font = pygame.font.Font(None, 24)
         lines = ["UDP Network (F9)",
                  "Receive on: 0.0.0.0:7501 (all IPv4 addresses)",
@@ -65,6 +70,25 @@ class View:
         if self.status:
             font = pygame.font.Font(None, 22)
             self.screen.blit(font.render(self.status[:95], True, (255, 255, 0)), (80, 565))
+
+    def draw_game_timer(self):
+        if self.game_final_score is not None:
+            red_score, green_score = self.game_final_score
+            if red_score == green_score:
+                message = f"GAME OVER - TIE {red_score} : {green_score}"
+            else:
+                winner = "RED" if red_score > green_score else "GREEN"
+                message = f"GAME OVER - {winner} WINS {red_score} : {green_score}"
+            color = (255, 220, 100)
+        elif self.game_timer_label:
+            message = self.game_timer_label
+            color = (255, 255, 255)
+        else:
+            return
+
+        font = pygame.font.Font(None, 26)
+        rendered = font.render(message, True, color)
+        self.screen.blit(rendered, rendered.get_rect(center=(400, 18)))
 
     def draw_hardware_popup(self):
         box = pygame.Rect(0, 0, 360, 130)
@@ -163,8 +187,13 @@ class View:
 
     # Show the keyboard controls along the bottom.
     def show_game_controls(self):
+        play_action_control = (
+            ("F5", "View", "Game")
+            if self.game_in_progress
+            else ("F5", "Start", "Game")
+        )
         controls =(
-            (10, ("F5", "Start", "Game")),
+            (10, play_action_control),
             (self.screen.get_width() - 185, ("DEL", "Delete", "Player")),
             (self.screen.get_width() - 125, ("F9", "UDP", "Network")),
             (self.screen.get_width() - 60, ("F12", "Clear", "Game")),

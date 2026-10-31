@@ -9,26 +9,32 @@ from game_timer import GameTimer
 
 
 class PlayActionDisplay:
-    def __init__(self):
+    def __init__(self, team_rosters=None):
         # SDL2 permits a second real window without replacing the roster window.
         self.window = Window("Laser Tag - Play Action", size=(760, 580))
         self.renderer = Renderer(self.window)
         self.actions = []
         self.max_actions = 14
         self.textures = {}
+        self.team_rosters = team_rosters or {"red": [], "green": []}
+        self.scores = {"red": 0, "green": 0}
 
         # Use the teammate's countdown without changing the UDP/controller flow.
-        self.game_timer = GameTimer()
+        self.game_timer = GameTimer(game_duration_seconds=360)
         self.game_timer.start()
         self.countdown_texture = None
         self.countdown_frame = None
+
+    def add_score(self, team):
+        if team in self.scores:
+            self.scores[team] += 1
 
     @property
     def window_id(self):
         return self.window.id
 
     def add_action(self, label):
-        # Incoming UDP events are still collected during the countdown.
+        # Keep the existing event feed available while the countdown is visible.
         self.actions.append(label)
         self.actions = self.actions[-self.max_actions:]
 
@@ -42,7 +48,6 @@ class PlayActionDisplay:
         self.renderer.blit(texture, pygame.Rect(x, y, texture.width, texture.height))
 
     def render(self):
-        self.game_timer.update()
         self.renderer.draw_color = (13, 16, 24, 255)
         self.renderer.clear()
 
@@ -50,20 +55,58 @@ class PlayActionDisplay:
             self.draw_countdown_and_images()
             self.renderer.present()
             return
+        if self.game_timer.phase == 'finished':
+            self.draw_game_over()
+            self.renderer.present()
+            return
 
-        # Once the countdown finishes, return to the existing live-hit screen.
         self.countdown_texture = None
         self._draw_text("PLAY ACTION", 30, 20, 44)
-        self._draw_text("Live hits (shooter --> player or base)", 30, 67, 24, (170, 180, 195))
+        self._draw_text("TEAMS", 30, 70, 24, (170, 180, 195))
+        self._draw_team("red", 30, 95, (255, 100, 100))
+        self._draw_team("green", 395, 95, (100, 230, 130))
+        self._draw_text("LIVE HITS (shooter --> player or base)", 30, 270, 22,
+                        (170, 180, 195))
 
         if not self.actions:
-            self._draw_text("Waiting for tag events on UDP port 7501...", 30, 246, 26)
+            self._draw_text("Waiting for tag events on UDP port 7501...", 30, 310, 23)
         else:
-            for index, action in enumerate(reversed(self.actions)):
-                self._draw_text(action, 36, 238 + index * 22, 23)
+            for index, action in enumerate(reversed(self.actions[-10:])):
+                self._draw_text(action, 36, 310 + index * 22, 21)
         self._draw_text("Close this window to stop the traffic generator", 30, 542,
                         21, (170, 180, 195))
         self.renderer.present()
+
+    def draw_game_over(self):
+        winner = self._winning_team()
+        self._draw_text("GAME OVER", 30, 24, 48)
+        if winner == "tie":
+            result = "FINAL RESULT: TIE"
+        else:
+            result = f"WINNER: {winner.upper()} TEAM"
+        self._draw_text(result, 30, 82, 32, (255, 220, 100))
+        self._draw_team("red", 30, 155, (255, 100, 100))
+        self._draw_team("green", 395, 155, (100, 230, 130))
+
+    def _winning_team(self):
+        if self.scores["red"] == self.scores["green"]:
+            return "tie"
+        return "red" if self.scores["red"] > self.scores["green"] else "green"
+
+    def _draw_team(self, team, x, y, color):
+        label = "RED TEAM" if team == "red" else "GREEN TEAM"
+        self._draw_text(f"{label}  Score: {self.scores[team]}", x, y, 26, color)
+        players = self.team_rosters[team]
+        if not players:
+            self._draw_text("No players registered", x, y + 34, 20)
+            return
+
+        split = (len(players) + 1) // 2
+        for index, player in enumerate(players):
+            column = index // split
+            row = index % split
+            self._draw_text(f"{index + 1}. {player}",
+                            x + column * 175, y + 36 + row * 17, 18)
 
     def draw_countdown_and_images(self):
         """Show the teammate's countdownN.jpg sequence in this second window."""
