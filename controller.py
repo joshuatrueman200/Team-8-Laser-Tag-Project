@@ -1,4 +1,7 @@
 import ipaddress
+from pathlib import Path
+import subprocess
+import sys
 
 import pygame
 from database import PlayerDatabaseError
@@ -26,6 +29,7 @@ class Controller:
         self.network_destination = self.udp.destination_ip
         self.action_display = None
         self.action_roster = {}
+        self.traffic_generator = None
         self.game_started = False
         self.game_over_handled = False
         self.last_traffic_sender = None
@@ -99,6 +103,21 @@ class Controller:
             if not data["id"] or not data["codename"]:
                 return i
         return len(rows) - 1
+
+    def start_traffic_generator(self):
+        project_dir = Path(__file__).resolve().parent
+        generator_path = project_dir / "tools" / "python_trafficgenarator_v2.py"
+        self.traffic_generator = subprocess.Popen(
+            [sys.executable, "-u", str(generator_path)],
+            cwd=str(project_dir),
+        )
+
+    def stop_traffic_generator(self):
+        process = self.traffic_generator
+        self.traffic_generator = None
+        if process is not None and process.poll() is None:
+            process.terminate()
+            process.wait()
 
     def handle_event(self, event):
         if event.type != pygame.KEYDOWN:
@@ -227,6 +246,7 @@ class Controller:
                         )
                     }
                     self.action_display = PlayActionDisplay(team_rosters)
+                    self.start_traffic_generator()
                     self.action_roster = roster_by_hardware(self.model)
                     self.last_traffic_sender = None
                     self.game_started = False
@@ -370,6 +390,7 @@ class Controller:
                 self.status = "Play action closed"
         else:
             self.status = "Play action closed before game start"
+        self.stop_traffic_generator()
         self.action_display.close()
         self.action_display = None
         self.action_roster = {}
@@ -383,6 +404,28 @@ class Controller:
         if self.action_display is not None:
             self.action_display.game_timer.update()
             phase = self.action_display.game_timer.phase
+            if (
+                getattr(self, "traffic_generator", None) is not None
+                and self.traffic_generator.poll() is not None
+                and phase != "finished"
+            ):
+                return_code = self.traffic_generator.returncode
+                self.traffic_generator = None
+                self.status = (
+                    "Test traffic generator exited unexpectedly "
+                    f"(exit code {return_code})"
+                )
+                self.action_display.close()
+                self.action_display = None
+                self.action_roster = {}
+                self.game_started = False
+                self.last_traffic_sender = None
+                self.view.game_timer_label = ""
+                self.view.game_in_progress = False
+                self.view.status = self.status
+                self.view.network_destination = self.network_destination
+                self.view.update()
+                return
             if phase == "countdown":
                 self.view.game_timer_label = (
                     f"GAME STARTS IN {self.action_display.game_timer.formatted()}"
