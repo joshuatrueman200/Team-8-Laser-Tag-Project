@@ -3,7 +3,6 @@
 from pathlib import Path
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
 
 import pygame
 
@@ -69,51 +68,6 @@ class CountdownIntegrationTests(unittest.TestCase):
             "Add at least one player to each team before starting",
         )
         self.assertIsNone(controller.action_display)
-
-    def test_pressing_f5_launches_test_generator_with_countdown(self):
-        red_rows = [
-            {"id": "1", "codename": "Red", "hardware_id": "11"}
-        ] + [
-            {"id": "", "codename": "", "hardware_id": ""}
-            for _ in range(14)
-        ]
-        green_rows = [
-            {"id": "2", "codename": "Green", "hardware_id": "22"}
-        ] + [
-            {"id": "", "codename": "", "hardware_id": ""}
-            for _ in range(14)
-        ]
-        controller = Controller.__new__(Controller)
-        controller.model = SimpleNamespace(red_rows=red_rows, green_rows=green_rows)
-        controller.view = SimpleNamespace(
-            network_screen=False,
-            player_entry_screen=True,
-            hardware_popup=False,
-            row=0,
-            current_team="red",
-            game_final_score=None,
-            game_in_progress=False,
-        )
-        controller.pending_delete = None
-        controller.action_display = None
-        controller.status = ""
-        controller.udp = SimpleNamespace(destination_ip="127.0.0.1")
-
-        with patch("controller.PlayActionDisplay") as display, patch(
-            "controller.subprocess.Popen"
-        ) as process:
-            controller.handle_event(
-                SimpleNamespace(type=pygame.KEYDOWN, key=pygame.K_F5, unicode="")
-            )
-
-        self.assertIs(controller.action_display, display.return_value)
-        process.assert_called_once()
-        self.assertEqual(
-            Path(process.call_args.args[0][2]).name,
-            "python_trafficgenarator_v2.py",
-        )
-        self.assertEqual(controller.status,
-                         "Play action countdown started; game begins in 30 seconds")
 
     def test_countdown_transitions_into_play(self):
         now = [100.0]

@@ -112,9 +112,9 @@ The Play Action window displays team totals and individual scores, with players 
 
 ### Run the supplied traffic generator
 
-1. Launch the game from the project directory with `python3 main.py` (or `python3 main.py --music_off`). Register at least **one player on each team**, giving each a unique hardware ID.
-2. Press **F5** in the game. The game automatically starts the local traffic generator and the 30-second countdown together. The generator reads the current hardware IDs from the game and waits for the countdown to finish.
-3. After the countdown, the game sends start code `202`; the generator begins simulating hits while the six-minute game timer runs. It supports 1-15 players per team, randomly chooses from each roster, and simulates friendly fire when a team has at least two players.
+1. Launch the game from the project directory with `python3 main.py` (or `python3 main.py --music_off`). Register all players first, with at least one player on each team and a unique hardware ID for each.
+2. In a second terminal, run `python3 tools/python_trafficgenarator_v2.py`. It reads the current hardware IDs from the running game, then waits for the start signal. It supports 1-15 players per team, randomly chooses from each roster, and simulates friendly fire when a team has at least two players.
+3. After the generator says it is waiting, press **F5** in the game. The 30-second countdown begins; after it ends, the game sends start code `202`, and test hits begin while the six-minute game timer runs.
 4. The Play Action window shows the final score and winner when the timer expires. The game itself remains open.
 
 ### Countdown integration
