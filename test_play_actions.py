@@ -192,8 +192,10 @@ class PlayActionTests(unittest.TestCase):
                    side_effect=lambda values: values[0]):
             red_message, _ = create_test_event(["11"], ["22"], 10)
             green_message, _ = create_test_event(["11"], ["22"], 20)
-        self.assertEqual(red_message, "11:53")
-        self.assertEqual(green_message, "22:43")
+        self.assertEqual(red_message, "11:43")
+        self.assertEqual(green_message, "22:53")
+        self.assertTrue(decode_hit(red_message.encode(), self.players).scores_base)
+        self.assertTrue(decode_hit(green_message.encode(), self.players).scores_base)
 
     def test_unknown_hardware_does_not_display_numbers(self):
         self.assertIsNone(decode_hit(b"11:999\x00", self.players))

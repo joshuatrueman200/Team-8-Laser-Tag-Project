@@ -1,9 +1,10 @@
+import argparse
+
 import pygame
 from controller import Controller
 from database import PlayerDatabase
 from model import Model
 from view import View
-import argparse as arg
 
 
 def main():
@@ -11,8 +12,12 @@ def main():
     pygame.init()
     controller = None
 
-    parser = arg.ArgumentParser()
-    parser.add_argument("--music_off", action="store_true", help = "Place to shut off music ingame")
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--music_off",
+        action="store_true",
+        help="Place to shut off music ingame",
+    )
     args = parser.parse_args()
 
     music_off = args.music_off

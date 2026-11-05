@@ -1,5 +1,4 @@
 import ipaddress
-import json
 
 import pygame
 from database import PlayerDatabaseError
@@ -24,8 +23,6 @@ class Controller:
         self.model = model
         self.view = view
         self.udp = UDPManager()
-        self.added_rows = set()
-        self._refresh_added_rows()
         self.network_destination = self.udp.destination_ip
         self.action_display = None
         self.action_roster = {}
@@ -34,15 +31,6 @@ class Controller:
         self.last_traffic_sender = None
         self.status = ""
         self.pending_delete = None
-
-    def _refresh_added_rows(self):
-        # Track which filled spots are already saved.
-        self.added_rows = {
-            (team, index)
-            for team, rows in (("red", self.model.red_rows), ("green", self.model.green_rows))
-            for index, data in enumerate(rows)
-            if data["id"] and data["codename"]
-        }
 
     def current_team_rows(self):
         # Return the list for the team on screen.
@@ -87,8 +75,6 @@ class Controller:
         except PlayerDatabaseError as error:
             self.status = f"Database save failed: {error}"
             return
-        self._refresh_added_rows()
-
         team = self.view.current_team
         if is_new_player:
             self.status = f"Saved {current['id']} ({current['codename']}) to {team}"
@@ -175,7 +161,6 @@ class Controller:
                     except PlayerDatabaseError as error:
                         self.status = f"Database delete failed: {error}"
                     else:
-                        self._refresh_added_rows()
                         self.status = (
                             f"Deleted player {deleted_player[0]} ({deleted_player[1]}) from database"
                         )
@@ -259,7 +244,6 @@ class Controller:
 
             if event.key == pygame.K_F12:
                 self.model.clear_teams()
-                self.added_rows.clear()
                 self.view.row = 0
                 self.view.col = 0
                 self.status =  "Game cleared"

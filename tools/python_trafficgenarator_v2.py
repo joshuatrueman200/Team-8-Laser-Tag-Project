@@ -81,9 +81,9 @@ def create_test_event(red_players, green_players, counter):
             return f"{attacker}:{target}", True
 
     if counter == 10:
-        return f"{random.choice(red_players)}:53", False
+        return f"{random.choice(red_players)}:43", False
     if counter == 20:
-        return f"{random.choice(green_players)}:43", False
+        return f"{random.choice(green_players)}:53", False
 
     red_player = random.choice(red_players)
     green_player = random.choice(green_players)

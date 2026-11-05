@@ -1,6 +1,7 @@
 """UDP transport for the equipment broadcaster and traffic generator."""
 
 import ipaddress
+import json
 import socket
 
 
@@ -41,8 +42,6 @@ class UDPManager:
 
     def send_roster(self, roster, sender_ip):
         """Reply to a localhost test-generator request on its UDP port 7500."""
-        import json
-
         payload = json.dumps(roster, separators=(",", ":")).encode("ascii")
         self.send_socket.sendto(payload, (sender_ip, self.TRANSMIT_PORT))
 
