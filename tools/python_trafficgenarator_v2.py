@@ -49,19 +49,22 @@ def parse_roster_response(data):
 
 def fetch_roster(receive_socket, attempts=ROSTER_ATTEMPTS):
     receive_socket.settimeout(2)
-    for attempt in range(attempts):
-        receive_socket.sendto(ROSTER_REQUEST, CLIENT_ADDRESS)
-        try:
-            data, _ = receive_socket.recvfrom(BUFFER_SIZE)
-        except socket.timeout:
-            if attempt + 1 == attempts:
-                raise RuntimeError(
-                    "Could not read the roster. Start the game and register "
-                    "players on both teams, then try again."
-                )
-            continue
-        return parse_roster_response(data)
-    raise RuntimeError("Could not read the roster from the game.")
+    try:
+        for attempt in range(attempts):
+            receive_socket.sendto(ROSTER_REQUEST, CLIENT_ADDRESS)
+            try:
+                data, _ = receive_socket.recvfrom(BUFFER_SIZE)
+            except socket.timeout:
+                if attempt + 1 == attempts:
+                    raise RuntimeError(
+                        "Could not read the roster. Start the game and register "
+                        "players on both teams, then try again."
+                    )
+                continue
+            return parse_roster_response(data)
+        raise RuntimeError("Could not read the roster from the game.")
+    finally:
+        receive_socket.settimeout(None)
 
 
 def create_test_event(red_players, green_players, counter):

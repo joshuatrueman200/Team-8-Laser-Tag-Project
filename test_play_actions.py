@@ -88,9 +88,11 @@ class PlayActionTests(unittest.TestCase):
             def __init__(self):
                 self.sent = []
                 self.timeout = None
+                self.timeout_history = []
 
             def settimeout(self, timeout):
                 self.timeout = timeout
+                self.timeout_history.append(timeout)
 
             def sendto(self, data, address):
                 self.sent.append((data, address))
@@ -101,6 +103,7 @@ class PlayActionTests(unittest.TestCase):
         fake_socket = FakeSocket()
         self.assertEqual(fetch_roster(fake_socket), (["11"], ["22"]))
         self.assertEqual(fake_socket.sent[0][0], b"ROSTER?")
+        self.assertEqual(fake_socket.timeout_history, [2, None])
 
     def test_traffic_generator_rejects_invalid_roster(self):
         with self.assertRaises(ValueError):
