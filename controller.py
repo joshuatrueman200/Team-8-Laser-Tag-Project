@@ -1,7 +1,15 @@
+import ipaddress
+import json
+
 import pygame
 from database import PlayerDatabaseError
 from udp_manager import UDPManager
-from play_actions import BASE_TARGETS, decode_hit, roster_by_hardware
+from play_actions import (
+    BASE_TARGETS,
+    decode_hit,
+    hardware_ids_by_team,
+    roster_by_hardware,
+)
 from play_action_display import PlayActionDisplay
 
 
@@ -436,6 +444,17 @@ class Controller:
                 self.view.status = self.status
 
         for data, address in self.udp.receive_messages():
+            if data == b"ROSTER?":
+                if not ipaddress.ip_address(address[0]).is_loopback:
+                    print(f"Ignoring non-local roster request from {address[0]}")
+                    continue
+                try:
+                    self.udp.send_roster(
+                        hardware_ids_by_team(self.model), address[0]
+                    )
+                except OSError as error:
+                    self.status = f"Could not send test roster: {error}"
+                continue
             if self.action_display is None or not self.game_started:
                 print(f"UDP received from {address}: {data!r}")
                 continue

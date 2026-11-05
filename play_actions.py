@@ -39,6 +39,18 @@ def roster_by_hardware(model):
     return players
 
 
+def hardware_ids_by_team(model):
+    """Return registered hardware IDs in the current red and green rosters."""
+    return {
+        team: [
+            row["hardware_id"]
+            for row in rows
+            if row["id"] and row["codename"] and row["hardware_id"]
+        ]
+        for team, rows in (("red", model.red_rows), ("green", model.green_rows))
+    }
+
+
 def decode_hit(packet, players):
     """Parse generator packets: attacker_hardware_id:victim_hardware_id + NUL."""
     try:

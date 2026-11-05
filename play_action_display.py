@@ -16,6 +16,10 @@ class PlayActionDisplay:
         self.actions = []
         self.max_actions = 14
         self.textures = {}
+        icon_path = Path(__file__).resolve().parent / "baseicon.jpg"
+        icon_surface = pygame.image.load(str(icon_path)).convert()
+        icon_surface = pygame.transform.smoothscale(icon_surface, (18, 18))
+        self.base_icon = Texture.from_surface(self.renderer, icon_surface)
         self.team_rosters = team_rosters or {"red": [], "green": []}
         self.player_scores = {
             player["hardware_id"]: player
@@ -136,10 +140,17 @@ class PlayActionDisplay:
         ):
             column = index // split
             row = index % split
-            base_marker = "[B] " if player["base_scored"] else ""
+            player_x = x + column * 175
+            player_y = y + 36 + row * 17
+            if player["base_scored"]:
+                self.renderer.blit(
+                    self.base_icon,
+                    pygame.Rect(player_x, player_y, 18, 18),
+                )
+                player_x += 22
             self._draw_text(
-                f"{base_marker}{player['name']} {player['score']}",
-                x + column * 175, y + 36 + row * 17, 18,
+                f"{player['name']} {player['score']}",
+                player_x, player_y, 18,
             )
 
     def draw_countdown_and_images(self):
@@ -158,6 +169,7 @@ class PlayActionDisplay:
     def close(self):
         # Destroy the renderer first, then its SDL2 window.
         self.countdown_texture = None
+        self.base_icon = None
         self.textures.clear()
         self.renderer = None
         self.window.destroy()

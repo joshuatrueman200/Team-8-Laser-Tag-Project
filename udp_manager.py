@@ -39,6 +39,13 @@ class UDPManager:
         # The provided traffic generator does not start until it receives 202.
         self.send_message("202")
 
+    def send_roster(self, roster, sender_ip):
+        """Reply to a localhost test-generator request on its UDP port 7500."""
+        import json
+
+        payload = json.dumps(roster, separators=(",", ":")).encode("ascii")
+        self.send_socket.sendto(payload, (sender_ip, self.TRANSMIT_PORT))
+
     def acknowledge_hit(self, sender_ip, friendly_fire=False):
         # Its listener is at port 7500, NOT the ephemeral transmit port.
         self.send_message("201", sender_ip)

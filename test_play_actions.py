@@ -3,9 +3,16 @@
 import socket
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
-from play_actions import decode_hit, roster_by_hardware
+from controller import Controller
+from play_actions import decode_hit, hardware_ids_by_team, roster_by_hardware
 from play_action_display import PlayActionDisplay
+from tools.python_trafficgenarator_v2 import (
+    create_test_event,
+    fetch_roster,
+    parse_roster_response,
+)
 from udp_manager import UDPManager
 
 
@@ -27,6 +34,77 @@ class PlayActionTests(unittest.TestCase):
         self.assertEqual(event.label, "Opus --> BigFoot")
         self.assertFalse(event.friendly_fire)
         self.assertEqual(event.attacker_team, "red")
+
+    def test_roster_hardware_ids_include_only_registered_players(self):
+        model = SimpleNamespace(
+            red_rows=self.model.red_rows + [
+                {"id": "", "codename": "", "hardware_id": "44"},
+            ],
+            green_rows=self.model.green_rows + [
+                {"id": "4", "codename": "", "hardware_id": "55"},
+            ],
+        )
+        self.assertEqual(
+            hardware_ids_by_team(model),
+            {"red": ["11", "33"], "green": ["22"]},
+        )
+
+    def test_game_answers_local_roster_requests(self):
+        replies = []
+        controller = Controller.__new__(Controller)
+        controller.model = self.model
+        controller.udp = SimpleNamespace(
+            receive_messages=lambda: [(b"ROSTER?", ("127.0.0.1", 7500))],
+            send_roster=lambda roster, sender_ip: replies.append(
+                (roster, sender_ip)
+            ),
+        )
+        controller.action_display = None
+        controller.game_started = False
+        controller.network_destination = "127.0.0.1"
+        controller.status = ""
+        controller.view = SimpleNamespace(update=lambda: None)
+
+        controller.update()
+
+        self.assertEqual(
+            replies,
+            [
+                (
+                    {"red": ["11", "33"], "green": ["22"]},
+                    "127.0.0.1",
+                )
+            ],
+        )
+
+    def test_traffic_generator_loads_roster_from_game_response(self):
+        red_ids, green_ids = parse_roster_response(
+            b'{"red":["11"],"green":["22","24"]}'
+        )
+        self.assertEqual(red_ids, ["11"])
+        self.assertEqual(green_ids, ["22", "24"])
+
+        class FakeSocket:
+            def __init__(self):
+                self.sent = []
+                self.timeout = None
+
+            def settimeout(self, timeout):
+                self.timeout = timeout
+
+            def sendto(self, data, address):
+                self.sent.append((data, address))
+
+            def recvfrom(self, buffer_size):
+                return b'{"red":["11"],"green":["22"]}', ("127.0.0.1", 7500)
+
+        fake_socket = FakeSocket()
+        self.assertEqual(fetch_roster(fake_socket), (["11"], ["22"]))
+        self.assertEqual(fake_socket.sent[0][0], b"ROSTER?")
+
+    def test_traffic_generator_rejects_invalid_roster(self):
+        with self.assertRaises(ValueError):
+            parse_roster_response(b'{"red":["43"],"green":["22"]}')
 
     def test_friendly_fire(self):
         event = decode_hit(b"11:33\x00", self.players)
@@ -87,6 +165,32 @@ class PlayActionTests(unittest.TestCase):
         self.assertEqual(green_players[0]["score"], 100)
         self.assertTrue(green_players[0]["base_scored"])
         self.assertEqual(display.scores["green"], 100)
+
+    def test_traffic_generator_supports_uneven_rosters_and_friendly_fire(self):
+        red_players = ["11"]
+        green_players = ["22", "24"]
+        with patch("tools.python_trafficgenarator_v2.random.choice",
+                   side_effect=lambda values: values[0]):
+            message, friendly_fire = create_test_event(
+                red_players, green_players, 5
+            )
+        self.assertTrue(friendly_fire)
+        self.assertEqual(message, "22:24")
+
+    def test_traffic_generator_skips_friendly_fire_with_one_player_each(self):
+        with patch("tools.python_trafficgenarator_v2.random.choice",
+                   side_effect=lambda values: values[0]):
+            message, friendly_fire = create_test_event(["11"], ["22"], 5)
+        self.assertFalse(friendly_fire)
+        self.assertIn(message, ("11:22", "22:11"))
+
+    def test_traffic_generator_targets_opposing_bases(self):
+        with patch("tools.python_trafficgenarator_v2.random.choice",
+                   side_effect=lambda values: values[0]):
+            red_message, _ = create_test_event(["11"], ["22"], 10)
+            green_message, _ = create_test_event(["11"], ["22"], 20)
+        self.assertEqual(red_message, "11:53")
+        self.assertEqual(green_message, "22:43")
 
     def test_unknown_hardware_does_not_display_numbers(self):
         self.assertIsNone(decode_hit(b"11:999\x00", self.players))

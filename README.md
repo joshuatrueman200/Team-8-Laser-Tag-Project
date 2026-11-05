@@ -106,14 +106,14 @@ Opus --> Green Base
 BigFoot --> Red Base
 ```
 
-The left name is the shooter; the right name is the player tagged or base hit. The supplied generator sends red-player hits to base `43` and green-player hits to base `53`, so the labels default to **Green Base (43)** and **Red Base (53)**. If your actual hardware assigns those colors differently, change `BASE_TARGETS` in `play_actions.py`. Hardware IDs `43` and `53` are reserved for bases and cannot be assigned to players.
+The left name is the shooter; the right name is the player tagged or base hit. Base `43` is the Green Base, and base `53` is the Red Base. Hardware IDs `43` and `53` are reserved for bases and cannot be assigned to players.
 
 The Play Action window displays team totals and individual scores, with players ranked highest to lowest. An opposing-player hit earns the attacker 10 points. A friendly-fire hit costs both players 10 points. Scoring an opposing base earns the attacker 100 points and marks their roster entry with `[B]`; hitting your own base does not score. Team totals are the sum of their players' points, and the leading team's score flashes during play. When six minutes expire, the game sends `221` to stop the generator and shows a final scoreboard and winner (or tie) in the Play Action window. Packets with unrecognized shooter/target hardware IDs are not displayed. All well-formed generator events get a `201` reply on UDP port `7500`; a same-team player hit gets the **two replies** expected by the provided generator, while a base hit gets one. Closing the additional window or pressing **Esc** while focused on it sends `221` to stop the generator, but only if play has started. The main roster window stays open.
 
 ### Run the supplied traffic generator
 
-1. Launch the game from the project directory with `python3 main.py` (or `python3 main.py --music_off`). Register at least **two red players and two green players**, giving each a unique hardware ID.
-2. In another terminal on the same machine, run `python3 tools/python_trafficgenarator_v2.py`. Enter the **hardware IDs** from those four roster entries, in red1, red2, green1, green2 order. If the generator is running elsewhere, set F9 to that machine's IP/broadcast address and update `clientAddressPort` in the generator to the game VM's reachable IP.
+1. Launch the game from the project directory with `python3 main.py` (or `python3 main.py --music_off`). Register at least **one player on each team**, giving each a unique hardware ID.
+2. In another terminal on the same machine, run `python3 tools/python_trafficgenarator_v2.py`. It automatically requests the current red and green hardware IDs from the running game over localhost; no IDs need to be entered again. It supports 1-15 players per team and randomly selects from the full rosters. It simulates friendly fire when either team has at least two players, and skips that event if both teams have only one.
 3. Wait for the generator to print `waiting for start from game_software`. Then press **F5** in the game. The new window shows the countdown images for 30 seconds; the game starts after the countdown and runs for six minutes.
 4. The Play Action window shows the final score and winner when the timer expires. The game itself remains open.
 
