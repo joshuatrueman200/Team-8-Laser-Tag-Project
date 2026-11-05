@@ -17,6 +17,11 @@ class PlayActionDisplay:
         self.max_actions = 14
         self.textures = {}
         self.team_rosters = team_rosters or {"red": [], "green": []}
+        self.player_scores = {
+            player["hardware_id"]: player
+            for players in self.team_rosters.values()
+            for player in players
+        }
         self.scores = {"red": 0, "green": 0}
 
         # Use the teammate's countdown without changing the UDP/controller flow.
@@ -24,10 +29,6 @@ class PlayActionDisplay:
         self.game_timer.start()
         self.countdown_texture = None
         self.countdown_frame = None
-
-    def add_score(self, team):
-        if team in self.scores:
-            self.scores[team] += 1
 
     @property
     def window_id(self):
@@ -37,6 +38,25 @@ class PlayActionDisplay:
         # Keep the existing event feed available while the countdown is visible.
         self.actions.append(label)
         self.actions = self.actions[-self.max_actions:]
+
+    def add_hit(self, hit):
+        attacker = self.player_scores[hit.attacker_hardware_id]
+        self.add_action(hit.label)
+
+        if hit.base_hit and hit.scores_base:
+            attacker["score"] += 100
+            attacker["base_scored"] = True
+            self.scores[hit.attacker_team] += 100
+        elif hit.base_hit:
+            return
+        elif hit.friendly_fire:
+            target = self.player_scores[hit.target_hardware_id]
+            attacker["score"] -= 10
+            target["score"] -= 10
+            self.scores[hit.attacker_team] -= 20
+        else:
+            attacker["score"] += 10
+            self.scores[hit.attacker_team] += 10
 
     def _draw_text(self, message, x, y, size=28, color=(235, 235, 235)):
         key = (message, size, color)
@@ -95,18 +115,32 @@ class PlayActionDisplay:
 
     def _draw_team(self, team, x, y, color):
         label = "RED TEAM" if team == "red" else "GREEN TEAM"
-        self._draw_text(f"{label}  Score: {self.scores[team]}", x, y, 26, color)
+        opposing_team = "green" if team == "red" else "red"
+        score_color = color
+        if (
+            self.game_timer.phase == "playing"
+            and self.scores[team] > self.scores[opposing_team]
+            and pygame.time.get_ticks() % 1000 < 500
+        ):
+            score_color = (255, 255, 120)
+        self._draw_text(f"{label}  Score: {self.scores[team]}", x, y, 26,
+                        score_color)
         players = self.team_rosters[team]
         if not players:
             self._draw_text("No players registered", x, y + 34, 20)
             return
 
         split = (len(players) + 1) // 2
-        for index, player in enumerate(players):
+        for index, player in enumerate(
+            sorted(players, key=lambda entry: entry["score"], reverse=True)
+        ):
             column = index // split
             row = index % split
-            self._draw_text(f"{index + 1}. {player}",
-                            x + column * 175, y + 36 + row * 17, 18)
+            base_marker = "[B] " if player["base_scored"] else ""
+            self._draw_text(
+                f"{base_marker}{player['name']} {player['score']}",
+                x + column * 175, y + 36 + row * 17, 18,
+            )
 
     def draw_countdown_and_images(self):
         """Show the teammate's countdownN.jpg sequence in this second window."""

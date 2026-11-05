@@ -11,6 +11,33 @@ from game_timer import GameTimer
 
 
 class CountdownIntegrationTests(unittest.TestCase):
+    def test_clearing_player_id_also_clears_name_and_hardware_id(self):
+        row = {"id": "3", "codename": "Player", "hardware_id": "11"}
+        controller = Controller.__new__(Controller)
+        controller.model = SimpleNamespace(
+            red_rows=[row],
+            green_rows=[{"id": "", "codename": "", "hardware_id": ""}],
+        )
+        controller.view = SimpleNamespace(
+            network_screen=False,
+            player_entry_screen=True,
+            hardware_popup=False,
+            row=0,
+            col=0,
+            current_team="red",
+        )
+        controller.pending_delete = None
+        controller.action_display = None
+        controller.status = ""
+
+        controller.handle_event(
+            SimpleNamespace(
+                type=pygame.KEYDOWN, key=pygame.K_BACKSPACE, unicode=""
+            )
+        )
+
+        self.assertEqual(row, {"id": "", "codename": "", "hardware_id": ""})
+
     def test_controller_requires_a_player_on_each_team_before_start(self):
         blank_team = [
             {"id": "", "codename": "", "hardware_id": ""}

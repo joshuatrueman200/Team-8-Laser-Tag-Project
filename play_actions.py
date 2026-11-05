@@ -10,6 +10,7 @@ BASE_TARGETS = {
     "43": "Green Base",
     "53": "Red Base",
 }
+BASE_TEAMS = {"43": "green", "53": "red"}
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,9 @@ class Hit:
     friendly_fire: bool
     base_hit: bool = False
     attacker_team: str = ""
+    attacker_hardware_id: str = ""
+    target_hardware_id: str = ""
+    scores_base: bool = False
 
     @property
     def label(self):
@@ -52,10 +56,13 @@ def decode_hit(packet, players):
     if parts[1] in BASE_TARGETS:
         # Base hits display a readable name and get a single 201 acknowledgment.
         return Hit(attacker[0], BASE_TARGETS[parts[1]], False, base_hit=True,
-                   attacker_team=attacker[1])
+                   attacker_team=attacker[1], attacker_hardware_id=parts[0],
+                   target_hardware_id=parts[1],
+                   scores_base=attacker[1] != BASE_TEAMS[parts[1]])
 
     target = players.get(parts[1])
     if target is None:
         return None
     return Hit(attacker[0], target[0], attacker[1] == target[1],
-               attacker_team=attacker[1])
+               attacker_team=attacker[1], attacker_hardware_id=parts[0],
+               target_hardware_id=parts[1])

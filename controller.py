@@ -219,7 +219,12 @@ class Controller:
                 try:
                     team_rosters = {
                         team: [
-                            data["codename"]
+                            {
+                                "name": data["codename"],
+                                "hardware_id": data["hardware_id"],
+                                "score": 0,
+                                "base_scored": False,
+                            }
                             for data in rows
                             if data["id"] and data["codename"]
                         ]
@@ -315,6 +320,8 @@ class Controller:
                                 if data is not current and data["id"] == current["id"]:
                                     self.status = "ID already in use"
                                     current["id"] = ""
+                                    current["codename"] = ""
+                                    current["hardware_id"] = ""
                                     return
                         try:
                             current["codename"] = self.model.get_codename(current["id"]) or ""
@@ -324,6 +331,9 @@ class Controller:
                         self.view.col = 1
                 elif event.key == pygame.K_BACKSPACE:
                     current["id"] = current["id"][:-1]
+                    if not current["id"]:
+                        current["codename"] = ""
+                        current["hardware_id"] = ""
                 elif event.unicode.isdigit() and len(current["id"]) < self.MAX_PLAYER_ID_LENGTH:
                     current["id"] += event.unicode
 
@@ -431,8 +441,7 @@ class Controller:
                 continue
             hit = decode_hit(data, self.action_roster)
             if hit is not None:
-                self.action_display.add_action(hit.label)
-                self.action_display.add_score(hit.attacker_team)
+                self.action_display.add_hit(hit)
                 print(f"TAG: {hit.label}")
             else:
                 # Ignore malformed packets and unknown hardware IDs.

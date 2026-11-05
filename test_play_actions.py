@@ -5,6 +5,7 @@ import unittest
 from types import SimpleNamespace
 
 from play_actions import decode_hit, roster_by_hardware
+from play_action_display import PlayActionDisplay
 from udp_manager import UDPManager
 
 
@@ -43,6 +44,49 @@ class PlayActionTests(unittest.TestCase):
         self.assertEqual(green_player_hit.label, "BigFoot --> Red Base")
         self.assertTrue(green_player_hit.base_hit)
         self.assertFalse(green_player_hit.friendly_fire)
+        self.assertTrue(green_player_hit.scores_base)
+        self.assertFalse(decode_hit(b"11:53\x00", self.players).scores_base)
+
+    def test_scoring_player_hits_friendly_fire_and_opposing_bases(self):
+        red_players = [
+            {"name": "Opus", "hardware_id": "11", "score": 0, "base_scored": False},
+            {"name": "Pal", "hardware_id": "33", "score": 0, "base_scored": False},
+        ]
+        green_players = [
+            {"name": "BigFoot", "hardware_id": "22", "score": 0, "base_scored": False},
+        ]
+        display = object.__new__(PlayActionDisplay)
+        display.team_rosters = {"red": red_players, "green": green_players}
+        display.player_scores = {
+            player["hardware_id"]: player
+            for player in red_players + green_players
+        }
+        display.scores = {"red": 0, "green": 0}
+        display.actions = []
+        display.max_actions = 14
+
+        display.add_hit(decode_hit(b"11:22\x00", self.players))
+        self.assertEqual(red_players[0]["score"], 10)
+        self.assertEqual(display.scores["red"], 10)
+
+        display.add_hit(decode_hit(b"11:33\x00", self.players))
+        self.assertEqual(red_players[0]["score"], 0)
+        self.assertEqual(red_players[1]["score"], -10)
+        self.assertEqual(display.scores["red"], -10)
+
+        display.add_hit(decode_hit(b"11:43\x00", self.players))
+        self.assertEqual(red_players[0]["score"], 100)
+        self.assertTrue(red_players[0]["base_scored"])
+        self.assertEqual(display.scores["red"], 90)
+
+        display.add_hit(decode_hit(b"11:53\x00", self.players))
+        self.assertEqual(red_players[0]["score"], 100)
+        self.assertEqual(display.scores["red"], 90)
+
+        display.add_hit(decode_hit(b"22:53\x00", self.players))
+        self.assertEqual(green_players[0]["score"], 100)
+        self.assertTrue(green_players[0]["base_scored"])
+        self.assertEqual(display.scores["green"], 100)
 
     def test_unknown_hardware_does_not_display_numbers(self):
         self.assertIsNone(decode_hit(b"11:999\x00", self.players))
