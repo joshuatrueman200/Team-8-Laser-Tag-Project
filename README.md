@@ -19,7 +19,7 @@ cd Team-8-Laser-Tag-Project
 bash setup_vm.sh
 ```
 
-`setup_vm.sh` checks for Pygame and the PostgreSQL Python driver, then installs Debian's `python3-pygame` and `python3-psycopg2` packages if needed. Your account may need `sudo` access. It does not create a virtual environment, install PostgreSQL, or create or change the database or tables.
+`setup_vm.sh` creates a virtual environment under `~/.local/share/team-8-laser-tag/venv` (outside the project) and installs Pygame 2.6.1 and the PostgreSQL driver from PyPI. It installs Debian's `python3-venv` package if virtual-environment support is missing; that may require `sudo`. The script does not install PostgreSQL or create or change the database or tables.
 
 Check that PostgreSQL is running and the expected player table is available:
 
@@ -31,10 +31,10 @@ psql -d photon -c "SELECT id, codename FROM public.players ORDER BY id;"
 Run the game from the project directory:
 
 ```bash
-python3 main.py
+PGDATABASE=photon ~/.local/share/team-8-laser-tag/venv/bin/python main.py
 ```
 
-To disable music, run `python3 main.py --music_off`. To update an existing clone, run `git pull origin main` from the repository directory, then run `bash setup_vm.sh` to ensure the runtime dependencies are installed.
+To disable music, run `PGDATABASE=photon ~/.local/share/team-8-laser-tag/venv/bin/python main.py --music_off`. To update an existing clone, run `git pull origin main` from the repository directory, then run `bash setup_vm.sh` to ensure the runtime dependencies are installed.
 
 ## View saved players
 
