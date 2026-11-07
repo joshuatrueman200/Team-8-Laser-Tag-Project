@@ -25,7 +25,6 @@ class View:
         self.status = ""
         self.hardware_popup = False
         self.game_timer_label = ""
-        self.game_final_score = None
         self.game_in_progress = False
 
     # Show the logo before the player list.
@@ -72,15 +71,7 @@ class View:
             self.screen.blit(font.render(self.status[:95], True, (255, 255, 0)), (80, 565))
 
     def draw_game_timer(self):
-        if self.game_final_score is not None:
-            red_score, green_score = self.game_final_score
-            if red_score == green_score:
-                message = f"GAME OVER - TIE {red_score} : {green_score}"
-            else:
-                winner = "RED" if red_score > green_score else "GREEN"
-                message = f"GAME OVER - {winner} WINS {red_score} : {green_score}"
-            color = (255, 220, 100)
-        elif self.game_timer_label:
+        if self.game_timer_label:
             message = self.game_timer_label
             color = (255, 255, 255)
         else:

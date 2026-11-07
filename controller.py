@@ -199,7 +199,7 @@ class Controller:
                     self.action_display.window.focus()
                     phase = self.action_display.game_timer.phase
                     if phase == "finished":
-                        self.status = "Game is over; showing the final scoreboard"
+                        self.status = "Game is over; Play Action display is frozen"
                     elif phase == "playing":
                         self.status = "Game is in progress; showing Play Action"
                     else:
@@ -238,7 +238,6 @@ class Controller:
                     self.last_traffic_sender = None
                     self.game_started = False
                     self.game_over_handled = False
-                    self.view.game_final_score = None
                     self.view.game_in_progress = True
                 except (OSError, pygame.error, ImportError) as error:
                     self.status = f"Unable to start play action: {error}"
@@ -370,10 +369,9 @@ class Controller:
             return
         # Stop the traffic generator with its expected termination message.
         if self.game_started:
-            try:
-                self.udp.stop_game(self.last_traffic_sender)
-            except OSError as error:
-                self.status = f"Could not signal game stop: {error}"
+            errors = self._send_game_stop()
+            if errors:
+                self.status = f"Could not signal game stop: {'; '.join(errors)}"
             else:
                 self.status = "Play action closed"
         else:
@@ -386,6 +384,15 @@ class Controller:
         self.last_traffic_sender = None
         self.view.game_timer_label = ""
         self.view.game_in_progress = False
+
+    def _send_game_stop(self):
+        errors = []
+        for _ in range(3):
+            try:
+                self.udp.stop_game(self.last_traffic_sender)
+            except OSError as error:
+                errors.append(str(error))
+        return errors
 
     def update(self):
         if self.action_display is not None:
@@ -418,21 +425,19 @@ class Controller:
                     self.status = "Play action started; listening for tag events on UDP 7501"
             elif phase == "finished" and not self.game_over_handled:
                 if self.game_started:
-                    try:
-                        self.udp.stop_game(self.last_traffic_sender)
-                    except OSError as error:
-                        self.status = f"Game ended, but could not stop traffic generator: {error}"
+                    errors = self._send_game_stop()
+                    if errors:
+                        self.status = (
+                            "Game ended, but could not send all stop messages: "
+                            + "; ".join(errors)
+                        )
                     else:
                         self.status = "Game over"
                 else:
                     self.status = "Game over"
                 self.game_started = False
                 self.game_over_handled = True
-                self.view.game_timer_label = ""
-                self.view.game_final_score = (
-                    self.action_display.scores["red"],
-                    self.action_display.scores["green"],
-                )
+                self.view.game_timer_label = "GAME OVER"
                 self.view.status = self.status
 
         for data, address in self.udp.receive_messages():

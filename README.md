@@ -1,56 +1,40 @@
-# Team 8 Laser Tag: VM Quick Start
+# Team 8 Laser Tag
 
-## Before you start
+## Set up and run on Debian
 
-- Debian Linux VM with a graphical desktop and Python 3.9 or newer.
-- VirtualBox Guest Additions, for shared folders.
+Requirements:
+
+- Debian with a graphical desktop, Python 3.9 or newer, and Git.
 - The existing PostgreSQL `photon` database and `public.players` table.
-- GitHub access on the Windows host. Git is not needed inside the VM.
 
-The VM account is `student` with password `student`.
-
-## Set up the shared folder once
-
-1. On the Windows host, download the `main` branch ZIP into a folder you can find.
-2. Shut down the VM. In VirtualBox, open **Settings > Shared Folders** and add the Windows folder that contains the ZIP.
-3. In the **Name** field, enter a simple name such as `FolderName`. Check **Auto-mount** and **Make Permanent**.
-
-   **Remember the Name exactly.** The Windows folder path is selected in VirtualBox; you do not type that path in the VM. In the VM, a share named `FolderName` appears at `/media/sf_FolderName`. For example, if you named yours `VMzip`, its VM path is `/media/sf_VMzip`.
-
-4. Start the VM. In the VM terminal, check that the share and ZIP are visible. Replace `FolderName` with the Name you chose in VirtualBox:
+Clone the GitHub repository and run the setup script:
 
 ```bash
-ls -lh /media/sf_FolderName
-```
-
-You should see `Team-8-Laser-Tag-Project-main.zip` in the output.
-
-### If you see "Permission denied"
-
-Run this once in the VM terminal:
-
-```bash
-sudo usermod -aG vboxsf student
-```
-
-When prompted, enter the VM account password `student` manually; the characters will not appear as you type. The password prompt cannot be safely automated here. Then log out of the VM desktop and log back in (or reboot) so the new group membership takes effect. Try the `ls` check again. If the `vboxsf` group does not exist, VirtualBox Guest Additions may not be installed or running.
-
-## Extract, install, and run
-
-In the commands below, replace `FolderName` with the exact VirtualBox **Name** you remembered above. For your share named `VMzip`, use `/media/sf_VMzip`.
-
-Run these commands in the VM terminal, one at a time:
-
-```bash
+sudo apt update
+sudo apt install -y git
 mkdir -p ~/laser-tag
-cp /media/sf_FolderName/Team-8-Laser-Tag-Project-main.zip ~/laser-tag/
-python3 -m zipfile -e ~/laser-tag/Team-8-Laser-Tag-Project-main.zip ~/laser-tag
-cd ~/laser-tag/Team-8-Laser-Tag-Project-main
+cd ~/laser-tag
+git clone https://github.com/joshuatrueman200/Team-8-Laser-Tag-Project.git
+cd Team-8-Laser-Tag-Project
 bash setup_vm.sh
+```
+
+`setup_vm.sh` checks for Pygame and the PostgreSQL Python driver. If either is missing, it installs Debian packages `python3-pygame` and `python3-psycopg2`; your account may need `sudo` access. The script does not install PostgreSQL or create or change the database or tables.
+
+Check that PostgreSQL is running and the expected player table is available:
+
+```bash
+pg_isready
+psql -d photon -c "SELECT id, codename FROM public.players ORDER BY id;"
+```
+
+Run the game from the project directory:
+
+```bash
 python3 main.py
 ```
 
-`setup_vm.sh` checks for Pygame and the PostgreSQL Python driver. If either is missing, it installs Debian packages `python3-pygame` and `python3-psycopg2`; your VM account may need `sudo` access. The script does not install PostgreSQL or change its database or tables. The game uses the existing `photon` database by default.
+To disable music, run `python3 main.py --music_off`. To update an existing clone, run `git pull origin main` from the repository directory.
 
 ## View saved players
 
@@ -59,10 +43,6 @@ To print the saved player IDs and codenames from the VM terminal:
 ```bash
 psql -d photon -c "SELECT id, codename FROM public.players ORDER BY id;"
 ```
-
-## Later ZIP downloads
-
-Put the new ZIP in the same Windows folder. It will appear in the VM shared folder automatically; you do not need to shut down the VM again.
 
 ## How to use the player entry screen
 
@@ -77,7 +57,7 @@ Each team has 15 rows. Every row has an ID box and a codename box. The yellow bo
 | `.` (dot)              | Switch between the red and green team                                             |
 | `Up` / `Down`          | Move to another row of the current team                                           |
 | `Del`                  | Delete the selected player from the database (asks `Y` / `N`)                     |
-| `F5`                   | Start with at least one player on each team; send `202` after the 30-second countdown |
+| `F5`                   | Start with at least one player on each team; begin play after the 30-second countdown |
 | `F9`                   | Change the destination IP used for UDP transmissions                              |
 | `F12`                  | Clear both team lists. Players stay saved in the database                         |
 
@@ -93,11 +73,11 @@ After confirming a player's hardware ID, the game sends **that equipment/hardwar
 
 For remote testing, the VM's network adapter and firewalls must allow UDP between the computers. VirtualBox **Bridged Adapter** or an appropriately configured **Host-only Adapter** is often easier for LAN testing than NAT. The network you are using determines the correct broadcast address.
 
-## Play Action window and traffic generator
+## Play Action and network events
 
-The play-action feature uses the new `play_action_display.py` and `play_actions.py` files. Press **F5** after registering players to open a **second** Pygame window; the original player-entry window stays open. The Play Action window shows a 30-second countdown, then sends the traffic generator's required start code (`202`) to the configured IP at port `7500` and starts a six-minute game timer. The player-entry window displays the countdown and game time. Pressing F5 again focuses the existing game window rather than starting another game.
+Press **F5** with at least one fully registered player on each team to open the Play Action window. It shows a 30-second countdown, then sends start code `202` to the configured IP at port `7500` and starts the six-minute timer. The player-entry window displays the timer. Pressing F5 again focuses the existing Play Action window.
 
-Packets from the traffic generator have the format `attacker_hardware_id:victim_hardware_id` (with an optional trailing NUL byte). The game looks up player hardware IDs in the **current teams** and shows their codenames. It also recognizes base target IDs `43` and `53` and shows named bases instead of raw IDs:
+The optional test traffic generator is `tools/python_trafficgenarator_v2.py`. It is **not started automatically** when the game launches; start it yourself in a second terminal if you want simulated hits. The generator needs two players on each team, each with a unique hardware ID, and sends to `127.0.0.1:7501` by default. Start the generator and enter those four hardware IDs before pressing F5 in the game; it waits for the game's `202` start code after the 30-second countdown. For real equipment or a separate sender, send UDP packets to port `7501` in the format `attacker_hardware_id:victim_hardware_id` (optionally followed by a NUL byte). The game matches hardware IDs to the current teams and recognizes base targets `43` and `53`:
 
 ```text
 Opus --> BigFoot
@@ -106,28 +86,17 @@ Opus --> Green Base
 BigFoot --> Red Base
 ```
 
-The left name is the shooter; the right name is the player tagged or base hit. The supplied generator sends red-player hits to base `43` and green-player hits to base `53`, so the labels default to **Green Base (43)** and **Red Base (53)**. If your actual hardware assigns those colors differently, change `BASE_TARGETS` in `play_actions.py`. Hardware IDs `43` and `53` are reserved for bases and cannot be assigned to players.
+The left name is the shooter; the right name is the player tagged or base hit. Base labels default to **Green Base (43)** and **Red Base (53)**. If your hardware uses different base IDs, update `BASE_TARGETS` in `play_actions.py`. Hardware IDs `43` and `53` are reserved and cannot be assigned to players.
 
-The Play Action window displays team totals and individual scores, with players ranked highest to lowest. An opposing-player hit earns the attacker 10 points. A friendly-fire hit costs both players 10 points. Scoring an opposing base earns the attacker 100 points and marks their roster entry with `[B]`; hitting your own base does not score. Team totals are the sum of their players' points, and the leading team's score flashes during play. When six minutes expire, the game sends `221` to stop the generator and shows a final scoreboard and winner (or tie) in the Play Action window. Packets with unrecognized shooter/target hardware IDs are not displayed. All well-formed generator events get a `201` reply on UDP port `7500`; a same-team player hit gets the **two replies** expected by the provided generator, while a base hit gets one. Closing the additional window or pressing **Esc** while focused on it sends `221` to stop the generator, but only if play has started. The main roster window stays open.
+The Play Action window shows team and individual scores. An opposing-player hit earns the attacker 10 points; friendly fire costs both players 10 points; scoring an opposing base earns the attacker 100 points. The leading team's score flashes. Well-formed hit packets receive `201` on UDP port `7500` (two acknowledgments for friendly fire). When six minutes expire, the game sends `221` three times, freezes the Play Action display, and stops processing hit updates. Closing the Play Action window or pressing **Esc** in it also sends `221` three times if play has started.
 
-### Run the supplied traffic generator
-
-1. Launch the game from the project directory with `python3 main.py` (or `python3 main.py --music_off`). Register at least **two red players and two green players**, giving each a unique hardware ID.
-2. In another terminal on the same machine, run `python3 tools/python_trafficgenarator_v2.py`. Enter the **hardware IDs** from those four roster entries, in red1, red2, green1, green2 order. If the generator is running elsewhere, set F9 to that machine's IP/broadcast address and update `clientAddressPort` in the generator to the game VM's reachable IP.
-3. Wait for the generator to print `waiting for start from game_software`. Then press **F5** in the game. The new window shows the countdown images for 30 seconds; the game starts after the countdown and runs for six minutes.
-4. The Play Action window shows the final score and winner when the timer expires. The game itself remains open.
-
-### Countdown integration
-
-The teammate's `game_timer.py` and `countdown_images/countdown0.jpg` through `countdown30.jpg` are integrated **inside the second Play Action window**. When F5 is pressed, that window shows the 30-second sequence, then starts the generator and six-minute game timer, and displays the teams, scores, and live tag list. The main player-entry window displays the active timer and is not replaced.
-
-The traffic generator's `202` start message is sent only after the countdown completes. At six minutes, the game sends `221` and shows the final scoreboard. Closing the Play Action window after the game starts also sends `221` to stop it. The teammate's extra `alert.jpg` and `countdown.jpg` assets are included unchanged, although the countdown implementation does not use them.
-
-To run the protocol / parsing tests (no PostgreSQL or Pygame needed):
+To run the optional generator from the project directory:
 
 ```bash
-python3 -m unittest -v test_play_actions.py
+python3 tools/python_trafficgenarator_v2.py
 ```
+
+The generator is a separate, manually started process; launching `main.py` does not launch it.
 
 ## Team members
 

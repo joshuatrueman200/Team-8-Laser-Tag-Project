@@ -68,6 +68,9 @@ class PlayActionDisplay:
         self.renderer.blit(texture, pygame.Rect(x, y, texture.width, texture.height))
 
     def render(self):
+        if self.game_timer.phase == "finished":
+            return
+
         self.renderer.draw_color = (13, 16, 24, 255)
         self.renderer.clear()
 
@@ -75,11 +78,6 @@ class PlayActionDisplay:
             self.draw_countdown_and_images()
             self.renderer.present()
             return
-        if self.game_timer.phase == 'finished':
-            self.draw_game_over()
-            self.renderer.present()
-            return
-
         self.countdown_texture = None
         self._draw_text("PLAY ACTION", 30, 20, 44)
         self._draw_text("TEAMS", 30, 70, 24, (170, 180, 195))
@@ -96,22 +94,6 @@ class PlayActionDisplay:
         self._draw_text("Close this window to stop the traffic generator", 30, 542,
                         21, (170, 180, 195))
         self.renderer.present()
-
-    def draw_game_over(self):
-        winner = self._winning_team()
-        self._draw_text("GAME OVER", 30, 24, 48)
-        if winner == "tie":
-            result = "FINAL RESULT: TIE"
-        else:
-            result = f"WINNER: {winner.upper()} TEAM"
-        self._draw_text(result, 30, 82, 32, (255, 220, 100))
-        self._draw_team("red", 30, 155, (255, 100, 100))
-        self._draw_team("green", 395, 155, (100, 230, 130))
-
-    def _winning_team(self):
-        if self.scores["red"] == self.scores["green"]:
-            return "tie"
-        return "red" if self.scores["red"] > self.scores["green"] else "green"
 
     def _draw_team(self, team, x, y, color):
         label = "RED TEAM" if team == "red" else "GREEN TEAM"
