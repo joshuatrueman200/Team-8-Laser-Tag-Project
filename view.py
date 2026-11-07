@@ -19,7 +19,6 @@ class View:
         # Remember which screen to draw.
         self.splash_screen = True
         self.player_entry_screen = False
-        self.game_screen = False
         self.network_screen = False
         self.network_destination = "127.0.0.1"
         self.status = ""
@@ -44,13 +43,6 @@ class View:
         self.show_game_controls()
         if self.hardware_popup:
             self.draw_hardware_popup()
-
-    def show_game_screen(self):
-        self.screen.fill((0, 0, 0))
-        font = pygame.font.Font(None, 48)
-        title = font.render("Game screen", True, (255, 255, 255))
-        title_rect = title.get_rect(center=self.screen.get_rect().center)
-        self.screen.blit(title, title_rect)
 
     def show_network_screen(self):
         self.screen.fill((0, 0, 0))
@@ -112,8 +104,6 @@ class View:
         elif self.player_entry_screen:
             self.show_player_entry_screen()
             self.draw_status()
-        elif self.game_screen:
-            self.show_game_screen()
 
 
     # Draw one team's player rows.

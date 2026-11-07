@@ -19,7 +19,7 @@ cd Team-8-Laser-Tag-Project
 bash setup_vm.sh
 ```
 
-`setup_vm.sh` checks for Pygame and the PostgreSQL Python driver. If either is missing, it installs Debian packages `python3-pygame` and `python3-psycopg2`; your account may need `sudo` access. The script does not install PostgreSQL or create or change the database or tables.
+`setup_vm.sh` checks for Pygame and the PostgreSQL Python driver, then installs Debian's `python3-pygame` and `python3-psycopg2` packages if needed. Your account may need `sudo` access. It does not create a virtual environment, install PostgreSQL, or create or change the database or tables.
 
 Check that PostgreSQL is running and the expected player table is available:
 
@@ -34,7 +34,7 @@ Run the game from the project directory:
 python3 main.py
 ```
 
-To disable music, run `python3 main.py --music_off`. To update an existing clone, run `git pull origin main` from the repository directory.
+To disable music, run `python3 main.py --music_off`. To update an existing clone, run `git pull origin main` from the repository directory, then run `bash setup_vm.sh` to ensure the runtime dependencies are installed.
 
 ## View saved players
 
@@ -61,7 +61,7 @@ Each team has 15 rows. Every row has an ID box and a codename box. The yellow bo
 | `F9`                   | Change the destination IP used for UDP transmissions                              |
 | `F12`                  | Clear both team lists. Players stay saved in the database                         |
 
-An ID that is already in a team cannot be added again. The screen shows "ID already in use". Player 1 (`Opus`) is always created in the database if it is missing.
+An ID that is already in a team cannot be added again. The screen shows "ID already in use". Player IDs and codenames are not reserved; enter whichever ID and name you want to use.
 
 ## UDP network (updated)
 
@@ -75,7 +75,7 @@ For remote testing, the VM's network adapter and firewalls must allow UDP betwee
 
 ## Play Action and network events
 
-Press **F5** with at least one fully registered player on each team to open the Play Action window. It shows a 30-second countdown, then sends start code `202` to the configured IP at port `7500` and starts the six-minute timer. The player-entry window displays the timer. Pressing F5 again focuses the existing Play Action window.
+Press **F5** with at least one fully registered player on each team to open the Play Action window. It shows a 30-second countdown, then sends start code `202` to the configured IP at port `7500` and starts the six-minute timer, shown in both the Play Action and player-entry windows. Pressing F5 again focuses the existing Play Action window.
 
 The optional test traffic generator is `tools/python_trafficgenarator_v2.py`. It is **not started automatically** when the game launches; start it yourself in a second terminal if you want simulated hits. The generator needs two players on each team, each with a unique hardware ID, and sends to `127.0.0.1:7501` by default. Start the generator and enter those four hardware IDs before pressing F5 in the game; it waits for the game's `202` start code after the 30-second countdown. For real equipment or a separate sender, send UDP packets to port `7501` in the format `attacker_hardware_id:victim_hardware_id` (optionally followed by a NUL byte). The game matches hardware IDs to the current teams and recognizes base targets `43` and `53`:
 

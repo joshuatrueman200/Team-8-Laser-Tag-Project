@@ -1,4 +1,0 @@
-CREATE TABLE IF NOT EXISTS player (
-    id INTEGER PRIMARY KEY,
-    codename TEXT NOT NULL CHECK(length(codename) BETWEEN 1 AND 30)
-);

@@ -11,7 +11,6 @@ class Model:
         self.red_rows = self._empty_team()
         self.green_rows = self._empty_team()
         self.database_players = {}
-        self.player_database.ensure_default_player()
         for player_id, codename in self.player_database.get_players():
             self.database_players[str(player_id)] = codename
 
@@ -51,17 +50,6 @@ class Model:
         self.database_players[player_id] = codename
 
         return is_new_player
-
-    def clear_codenames(self):
-        cleared_players = self.player_database.clear_codenames()
-        for player_id, _ in cleared_players:
-            player_id = str(player_id)
-            self.database_players[player_id] = ""
-            for rows in (self.red_rows, self.green_rows):
-                for data in rows:
-                    if data["id"] == player_id:
-                        data["codename"] = ""
-        return len(cleared_players)
 
     def delete_player(self, player_id):
         # Delete from the database before clearing the screen.

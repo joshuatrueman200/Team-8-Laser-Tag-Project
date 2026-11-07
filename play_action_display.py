@@ -80,6 +80,13 @@ class PlayActionDisplay:
             return
         self.countdown_texture = None
         self._draw_text("PLAY ACTION", 30, 20, 44)
+        self._draw_text(
+            f"TIME LEFT {self.game_timer.formatted()}",
+            520,
+            30,
+            24,
+            (255, 220, 100),
+        )
         self._draw_text("TEAMS", 30, 70, 24, (170, 180, 195))
         self._draw_team("red", 30, 95, (255, 100, 100))
         self._draw_team("green", 395, 95, (100, 230, 130))

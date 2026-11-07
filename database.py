@@ -23,20 +23,6 @@ class PlayerDatabase:
         except psycopg2.Error as error:
             raise PlayerDatabaseError(str(error)) from error
 
-    # Make sure the required default player (1, Opus) exists with its name.
-    def ensure_default_player(self):
-        self._query(
-            """
-            INSERT INTO public.players (id, codename)
-            SELECT 1, 'Opus'
-            WHERE NOT EXISTS (SELECT 1 FROM public.players WHERE id = 1)
-            RETURNING id;
-            """
-        )
-        self._query(
-            "UPDATE public.players SET codename = 'Opus' WHERE id = 1 AND codename = '' RETURNING id;"
-        )
-
     # Read all saved players, in ID order.
     def get_players(self):
         return self._query(
@@ -67,13 +53,6 @@ class PlayerDatabase:
         return self._query(
             "UPDATE public.players SET codename = %s WHERE id = %s RETURNING id, codename;",
             (codename, player_id),
-        )
-
-    # Clear names while preserving every saved player ID.
-    def clear_codenames(self):
-        return self._query(
-            "UPDATE public.players SET codename = '' RETURNING id;",
-            fetch_all=True,
         )
 
     # Delete one player and return the row that got deleted.
