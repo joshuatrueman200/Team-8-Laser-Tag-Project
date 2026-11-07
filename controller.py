@@ -126,10 +126,27 @@ class Controller:
                 self.stop_play_action()
             return
         if self.is_action_window_event(event):
+            if event.key == pygame.K_F6:
+                if self.action_display.game_timer.phase == "finished":
+                    self.stop_play_action()
+                else:
+                    self.status = "F6 returns to player entry after the game ends"
             return
 
         # Only handle roster keys on the player entry screen.
         if self.view.player_entry_screen:
+            if self.action_display is not None:
+                if event.key == pygame.K_F5:
+                    self.action_display.window.focus()
+                    self.status = (
+                        "Game is over; press F6 in Play Action to return"
+                        if self.action_display.game_timer.phase == "finished"
+                        else "Roster locked while the game is active"
+                    )
+                else:
+                    self.status = "Roster locked while the game is active"
+                return
+
             # Hardware ID box: type the number, Enter saves, Esc cancels.
             if self.view.hardware_popup:
                 current = self.current_team_rows()[self.view.row]
@@ -180,16 +197,6 @@ class Controller:
                     for data in team_rows
                 ):
                     self.status = "Finish the name and hardware ID for every player before starting"
-                    return
-                if self.action_display is not None:
-                    self.action_display.window.focus()
-                    phase = self.action_display.game_timer.phase
-                    if phase == "finished":
-                        self.status = "Game is over; Play Action display is frozen"
-                    elif phase == "playing":
-                        self.status = "Game is in progress; showing Play Action"
-                    else:
-                        self.status = "Game countdown is in progress"
                     return
                 if any(
                     not any(
@@ -359,6 +366,8 @@ class Controller:
                 self.status = f"Could not signal game stop: {'; '.join(errors)}"
             else:
                 self.status = "Play action closed"
+        elif self.game_over_handled:
+            self.status = "Returned to player entry"
         else:
             self.status = "Play action closed before game start"
         self.action_display.close()

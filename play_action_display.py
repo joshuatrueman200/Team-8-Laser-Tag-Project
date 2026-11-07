@@ -23,6 +23,7 @@ class PlayActionDisplay:
             for player in players
         }
         self.scores = {"red": 0, "green": 0}
+        self.frozen = False
 
         # Use the teammate's countdown without changing the UDP/controller flow.
         self.game_timer = GameTimer(game_duration_seconds=360)
@@ -68,7 +69,7 @@ class PlayActionDisplay:
         self.renderer.blit(texture, pygame.Rect(x, y, texture.width, texture.height))
 
     def render(self):
-        if self.game_timer.phase == "finished":
+        if self.frozen:
             return
 
         self.renderer.draw_color = (13, 16, 24, 255)
@@ -87,7 +88,8 @@ class PlayActionDisplay:
             24,
             (255, 220, 100),
         )
-        self._draw_text("TEAMS", 30, 70, 24, (170, 180, 195))
+        if self.game_timer.phase != "finished":
+            self._draw_text("TEAMS", 30, 70, 24, (170, 180, 195))
         self._draw_team("red", 30, 95, (255, 100, 100))
         self._draw_team("green", 395, 95, (100, 230, 130))
         self._draw_text("LIVE HITS (shooter --> player or base)", 30, 270, 22,
@@ -98,13 +100,25 @@ class PlayActionDisplay:
         else:
             for index, action in enumerate(reversed(self.actions[-10:])):
                 self._draw_text(action, 36, 310 + index * 22, 21)
-        self._draw_text("Close this window to stop the traffic generator", 30, 542,
-                        21, (170, 180, 195))
+        if self.game_timer.phase == "finished":
+            self._draw_text("Press F6 to return to player entry", 30, 542,
+                            21, (170, 180, 195))
+        else:
+            self._draw_text("Close this window to stop the traffic generator", 30, 542,
+                            21, (170, 180, 195))
         self.renderer.present()
+        if self.game_timer.phase == "finished":
+            self.frozen = True
 
     def _draw_team(self, team, x, y, color):
         label = "RED TEAM" if team == "red" else "GREEN TEAM"
         opposing_team = "green" if team == "red" else "red"
+        if self.game_timer.phase == "finished":
+            winner = self.winning_team
+            if winner == team:
+                self._draw_text("WINNER", x, y - 28, 22, (255, 220, 100))
+            elif winner is None:
+                self._draw_text("TIE", x, y - 28, 22, (255, 220, 100))
         score_color = color
         if (
             self.game_timer.phase == "playing"
@@ -130,6 +144,12 @@ class PlayActionDisplay:
                 f"{base_marker}{player['name']} {player['score']}",
                 x + column * 175, y + 36 + row * 17, 18,
             )
+
+    @property
+    def winning_team(self):
+        if self.scores["red"] == self.scores["green"]:
+            return None
+        return "red" if self.scores["red"] > self.scores["green"] else "green"
 
     def draw_countdown_and_images(self):
         """Show the teammate's countdownN.jpg sequence in this second window."""

@@ -14,10 +14,6 @@ class GameTimer:
         self.phase = 'countdown'
         self.deadline = self.clock() + self.countdown_seconds
 
-    def reset(self):
-        self.phase = 'idle'
-        self.deadline = None
-
     def update(self):
         now = self.clock()
         if self.phase == 'countdown' and now >= self.deadline:

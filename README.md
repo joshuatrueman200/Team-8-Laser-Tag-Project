@@ -58,6 +58,7 @@ Each team has 15 rows. Every row has an ID box and a codename box. The yellow bo
 | `Up` / `Down`          | Move to another row of the current team                                           |
 | `Del`                  | Delete the selected player from the database (asks `Y` / `N`)                     |
 | `F5`                   | Start with at least one player on each team; begin play after the 30-second countdown |
+| `F6`                   | After the game ends, close Play Action and return to player entry                   |
 | `F9`                   | Change the destination IP used for UDP transmissions                              |
 | `F12`                  | Clear both team lists. Players stay saved in the database                         |
 
@@ -75,7 +76,7 @@ For remote testing, the VM's network adapter and firewalls must allow UDP betwee
 
 ## Play Action and network events
 
-Press **F5** with at least one fully registered player on each team to open the Play Action window. It shows a 30-second countdown, then sends start code `202` to the configured IP at port `7500` and starts the six-minute timer, shown in both the Play Action and player-entry windows. Pressing F5 again focuses the existing Play Action window.
+Press **F5** with at least one fully registered player on each team to open the Play Action window. It shows a 30-second countdown, then sends start code `202` to the configured IP at port `7500` and starts the six-minute timer, shown in both the Play Action and player-entry windows. The roster is locked until the Play Action window closes. Pressing F5 again from player entry focuses the existing Play Action window. After the six-minute game ends, the higher-scoring team is labeled `WINNER` above its roster (or both teams show `TIE`); the display then freezes. Press **F6** while the Play Action window is focused to close it and return to player entry.
 
 The optional test traffic generator is `tools/python_trafficgenarator_v2.py`. It is **not started automatically** when the game launches; start it yourself in a second terminal if you want simulated hits. The generator needs two players on each team, each with a unique hardware ID, and sends to `127.0.0.1:7501` by default. Start the generator and enter those four hardware IDs before pressing F5 in the game; it waits for the game's `202` start code after the 30-second countdown. For real equipment or a separate sender, send UDP packets to port `7501` in the format `attacker_hardware_id:victim_hardware_id` (optionally followed by a NUL byte). The game matches hardware IDs to the current teams and recognizes base targets `43` and `53`:
 
@@ -88,7 +89,7 @@ BigFoot --> Red Base
 
 The left name is the shooter; the right name is the player tagged or base hit. Base labels default to **Green Base (43)** and **Red Base (53)**. If your hardware uses different base IDs, update `BASE_TARGETS` in `play_actions.py`. Hardware IDs `43` and `53` are reserved and cannot be assigned to players.
 
-The Play Action window shows team and individual scores. An opposing-player hit earns the attacker 10 points; friendly fire costs both players 10 points; scoring an opposing base earns the attacker 100 points. The leading team's score flashes. Well-formed hit packets receive `201` on UDP port `7500` (two acknowledgments for friendly fire). When six minutes expire, the game sends `221` three times, freezes the Play Action display, and stops processing hit updates. Closing the Play Action window or pressing **Esc** in it also sends `221` three times if play has started.
+The Play Action window shows team and individual scores. An opposing-player hit earns the attacker 10 points; friendly fire costs both players 10 points; scoring an opposing base earns the attacker 100 points. The leading team's score flashes. Well-formed hit packets receive `201` on UDP port `7500` (two acknowledgments for friendly fire). When six minutes expire, the game sends `221` three times, labels the higher-scoring team `WINNER` (or shows `TIE`), freezes the Play Action display, and stops processing hit updates. Pressing **F6** after the game ends closes the Play Action window and returns to player entry. Closing the Play Action window or pressing **Esc** in it before the game ends also sends `221` three times if play has started.
 
 To run the optional generator from the project directory:
 
