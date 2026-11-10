@@ -32,8 +32,6 @@ def main():
         audio = GameAudio(enabled=not music_off)
         controller = Controller(model, view, audio)
 
-        audio.play_background()
-
         # Keep the window open until the player closes it.
         running = True
         clock = pygame.time.Clock()
