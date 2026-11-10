@@ -99,12 +99,15 @@ The play-action feature uses the new `play_action_display.py` and `play_actions.
 
 Packets from the traffic generator have the format `attacker_hardware_id:victim_hardware_id` (with an optional trailing NUL byte). The game looks up player hardware IDs in the **current teams** and shows their codenames. It also recognizes base target IDs `43` and `53` and shows named bases instead of raw IDs:
 
+<<<<<<< Updated upstream
 ```text
 Opus --> BigFoot
 Pal --> Opus
 Opus --> Green Base
 BigFoot --> Red Base
 ```
+=======
+>>>>>>> Stashed changes
 
 The left name is the shooter; the right name is the player tagged or base hit. Base `43` is the Green Base, and base `53` is the Red Base. Hardware IDs `43` and `53` are reserved for bases and cannot be assigned to players.
 

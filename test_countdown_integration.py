@@ -3,6 +3,7 @@
 from pathlib import Path
 import unittest
 from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 import pygame
 
@@ -68,6 +69,37 @@ class CountdownIntegrationTests(unittest.TestCase):
             "Add at least one player to each team before starting",
         )
         self.assertIsNone(controller.action_display)
+
+    def test_controller_plays_countdown_audio_after_f5(self):
+        player = {"id": "1", "codename": "Opus", "hardware_id": "11"}
+        opposing_player = {
+            "id": "2",
+            "codename": "BigFoot",
+            "hardware_id": "22",
+        }
+        controller = Controller.__new__(Controller)
+        controller.model = SimpleNamespace(
+            red_rows=[player],
+            green_rows=[opposing_player],
+        )
+        controller.view = SimpleNamespace(
+            network_screen=False,
+            player_entry_screen=True,
+            hardware_popup=False,
+            row=0,
+            current_team="red",
+        )
+        controller.pending_delete = None
+        controller.action_display = None
+        controller.audio = SimpleNamespace(play_countdown=Mock())
+        controller.status = ""
+
+        with patch("controller.PlayActionDisplay"):
+            controller.handle_event(
+                SimpleNamespace(type=pygame.KEYDOWN, key=pygame.K_F5, unicode="")
+            )
+
+        controller.audio.play_countdown.assert_called_once_with()
 
     def test_countdown_transitions_into_play(self):
         now = [100.0]
@@ -162,6 +194,7 @@ class CountdownIntegrationTests(unittest.TestCase):
         controller.network_destination = "127.0.0.1"
         controller.status = ""
         controller.udp = FakeUDP()
+        controller.audio = SimpleNamespace(play_background=Mock())
         controller.view = view
 
         now[0] = 129.0
@@ -172,6 +205,7 @@ class CountdownIntegrationTests(unittest.TestCase):
         now[0] = 130.0
         controller.update()
         self.assertEqual(controller.udp.start_count, 1)
+        controller.audio.play_background.assert_called_once_with()
         self.assertEqual(view.game_timer_label, "GAME TIME 06:00")
 
         now[0] = 490.0

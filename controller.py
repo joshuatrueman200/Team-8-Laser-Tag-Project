@@ -2,6 +2,7 @@ import ipaddress
 
 import pygame
 from database import PlayerDatabaseError
+from game_audio import GameAudio
 from udp_manager import UDPManager
 from play_actions import (
     BASE_TARGETS,
@@ -19,9 +20,10 @@ class Controller:
     MAX_CODENAME_LENGTH = 15
 
     # Constructor
-    def __init__(self, model, view):
+    def __init__(self, model, view, audio=None):
         self.model = model
         self.view = view
+        self.audio = audio if audio is not None else GameAudio()
         self.udp = UDPManager()
         self.network_destination = self.udp.destination_ip
         self.action_display = None
@@ -240,6 +242,12 @@ class Controller:
                         self.action_display = None
                 else:
                     self.status = "Play action countdown started; game begins in 30 seconds"
+                    try:
+                        self.audio.play_countdown()
+                    except (OSError, pygame.error) as error:
+                        self.status = (
+                            f"Countdown started, but audio could not play: {error}"
+                        )
                 return
 
             if event.key == pygame.K_F12:
@@ -360,6 +368,7 @@ class Controller:
     def stop_play_action(self):
         if self.action_display is None:
             return
+        countdown_active = self.action_display.game_timer.phase == "countdown"
         # Stop the traffic generator with its expected termination message.
         if self.game_started:
             try:
@@ -370,6 +379,11 @@ class Controller:
                 self.status = "Play action closed"
         else:
             self.status = "Play action closed before game start"
+        if countdown_active:
+            try:
+                self.audio.play_background()
+            except (OSError, pygame.error) as error:
+                self.status += f"; background audio could not resume: {error}"
         self.action_display.close()
         self.action_display = None
         self.action_roster = {}
@@ -395,6 +409,11 @@ class Controller:
                 phase == "playing"
                 and not self.game_started
             ):
+                audio_error = None
+                try:
+                    self.audio.play_background()
+                except (OSError, pygame.error) as error:
+                    audio_error = str(error)
                 try:
                     self.udp.start_game()
                 except OSError as error:
@@ -407,7 +426,15 @@ class Controller:
                     self.view.game_in_progress = False
                 else:
                     self.game_started = True
-                    self.status = "Play action started; listening for tag events on UDP 7501"
+                    if audio_error:
+                        self.status = (
+                            "Play action started, but background audio could not "
+                            f"resume: {audio_error}"
+                        )
+                    else:
+                        self.status = (
+                            "Play action started; listening for tag events on UDP 7501"
+                        )
             elif phase == "finished" and not self.game_over_handled:
                 if self.game_started:
                     try:

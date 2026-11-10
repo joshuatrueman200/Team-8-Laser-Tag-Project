@@ -3,6 +3,7 @@ import argparse
 import pygame
 from controller import Controller
 from database import PlayerDatabase
+from game_audio import GameAudio
 from model import Model
 from view import View
 
@@ -28,13 +29,10 @@ def main():
 
         model = Model(PlayerDatabase())
         view = View(screen, model)
-        controller = Controller(model, view)
+        audio = GameAudio(enabled=not music_off)
+        controller = Controller(model, view, audio)
 
-        # Play the game music on repeat.
-        if not music_off:
-            pygame.mixer.music.load("Asset/photon_tracks_Track01.mp3")
-            pygame.mixer.music.set_volume(1)
-            pygame.mixer.music.play(-1, start=180)
+        audio.play_background()
 
         # Keep the window open until the player closes it.
         running = True
