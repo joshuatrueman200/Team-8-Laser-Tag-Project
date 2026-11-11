@@ -16,6 +16,7 @@ class PlayActionDisplay:
         self.actions = []
         self.max_actions = 14
         self.textures = {}
+        self.base_icon = None
         self.team_rosters = team_rosters or {"red": [], "green": []}
         self.player_scores = {
             player["hardware_id"]: player
@@ -67,6 +68,15 @@ class PlayActionDisplay:
             self.textures[key] = Texture.from_surface(self.renderer, surface)
         texture = self.textures[key]
         self.renderer.blit(texture, pygame.Rect(x, y, texture.width, texture.height))
+
+    def get_base_icon(self):
+        # Load the base icon once and keep it as a small texture.
+        if self.base_icon is None:
+            path = Path(__file__).resolve().parent / "baseicon.jpg"
+            surface = pygame.image.load(str(path)).convert()
+            surface = pygame.transform.smoothscale(surface, (20, 11))
+            self.base_icon = Texture.from_surface(self.renderer, surface)
+        return self.base_icon
 
     def render(self):
         if self.frozen:
@@ -139,11 +149,13 @@ class PlayActionDisplay:
         ):
             column = index // split
             row = index % split
-            base_marker = "[B] " if player["base_scored"] else ""
-            self._draw_text(
-                f"{base_marker}{player['name']} {player['score']}",
-                x + column * 175, y + 36 + row * 17, 18,
-            )
+            player_x = x + column * 175
+            player_y = y + 36 + row * 17
+            if player["base_scored"]:
+                icon = self.get_base_icon()
+                self.renderer.blit(icon, pygame.Rect(player_x, player_y + 3, 20, 11))
+                player_x += 24
+            self._draw_text(f"{player['name']} {player['score']}", player_x, player_y, 18)
 
     @property
     def winning_team(self):
@@ -167,6 +179,7 @@ class PlayActionDisplay:
     def close(self):
         # Destroy the renderer first, then its SDL2 window.
         self.countdown_texture = None
+        self.base_icon = None
         self.textures.clear()
         self.renderer = None
         self.window.destroy()
