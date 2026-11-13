@@ -17,6 +17,8 @@ class PlayActionDisplay:
         self.max_actions = 14
         self.textures = {}
         self.base_icon = None
+        self.alert_image = None
+        self.alert_start = None
         self.team_rosters = team_rosters or {"red": [], "green": []}
         self.player_scores = {
             player["hardware_id"]: player
@@ -44,6 +46,9 @@ class PlayActionDisplay:
     def add_hit(self, hit):
         attacker = self.player_scores[hit.attacker_hardware_id]
         self.add_action(hit.label)
+
+        if hit.base_hit:
+            self.alert_start = pygame.time.get_ticks()
 
         if hit.base_hit and hit.scores_base:
             attacker["score"] += 100
@@ -77,6 +82,25 @@ class PlayActionDisplay:
             surface = pygame.transform.smoothscale(surface, (20, 11))
             self.base_icon = Texture.from_surface(self.renderer, surface)
         return self.base_icon
+
+    def get_alert_image(self):
+        # Load the alert picture once, sized to fill the window.
+        if self.alert_image is None:
+            path = Path(__file__).resolve().parent / "countdown_images" / "alert.jpg"
+            surface = pygame.image.load(str(path)).convert()
+            surface = pygame.transform.smoothscale(surface, self.window.size)
+            self.alert_image = Texture.from_surface(self.renderer, surface)
+        return self.alert_image
+
+    def draw_alert(self):
+        # Flash the alert picture 3 times: 250 ms on, 250 ms off.
+        if self.alert_start is None:
+            return
+        elapsed = pygame.time.get_ticks() - self.alert_start
+        if elapsed >= 1500:
+            self.alert_start = None
+        elif elapsed % 500 < 250:
+            self.renderer.blit(self.get_alert_image(), pygame.Rect((0, 0), self.window.size))
 
     def render(self):
         if self.frozen:
@@ -116,6 +140,7 @@ class PlayActionDisplay:
         else:
             self._draw_text("Close this window to stop the traffic generator", 30, 542,
                             21, (170, 180, 195))
+        self.draw_alert()
         self.renderer.present()
         if self.game_timer.phase == "finished":
             self.frozen = True
@@ -180,6 +205,7 @@ class PlayActionDisplay:
         # Destroy the renderer first, then its SDL2 window.
         self.countdown_texture = None
         self.base_icon = None
+        self.alert_image = None
         self.textures.clear()
         self.renderer = None
         self.window.destroy()
