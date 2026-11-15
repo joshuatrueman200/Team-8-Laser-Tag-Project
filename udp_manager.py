@@ -9,17 +9,11 @@ class UDPManager:
     TRANSMIT_PORT = 7500
 
     def __init__(self, destination_ip="127.0.0.1"):
-        # Receive on every local IPv4 interface, even after changing networks.
-        self.receive_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            self.receive_socket.bind(("0.0.0.0", self.RECEIVE_PORT))
-            self.receive_socket.setblocking(False)
-            self.send_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-            self.change_network(destination_ip)
-        except (ValueError, OSError):
-            self.close()
-            raise
+    self.receive_socket = None
+    self.send_socket = None
+
+    self.change_network(destination_ip)
+    self.open()
 
     def change_network(self, destination_ip):
         """Change only the destination for outgoing packets, not the listening IP."""
@@ -27,6 +21,30 @@ class UDPManager:
         if address.is_unspecified:
             raise ValueError("0.0.0.0 is for receiving, not transmitting")
         self.destination_ip = str(address)
+
+    def open(self):
+    """Open the UDP sockets if they are currently closed."""
+
+    if self.receive_socket is not None or self.send_socket is not None:
+        return
+
+    try:
+        self.receive_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+        self.receive_socket.bind(("0.0.0.0", self.RECEIVE_PORT))
+        self.receive_socket.setblocking(False)
+
+        self.send_socket.setsockopt(
+            socket.SOL_SOCKET,
+            socket.SO_BROADCAST,
+            1
+        )
+
+    except OSError:
+        self.close()
+        raise
+
 
     def send_message(self, message, destination_ip=None):
         ip = destination_ip if destination_ip is not None else self.destination_ip
@@ -51,6 +69,10 @@ class UDPManager:
         self.send_message("221", sender_ip)
 
     def receive_messages(self):
+        if self.receive_socket is None:
+            return []
+
+            
         messages = []
         while True:
             try:

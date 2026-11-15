@@ -18,7 +18,7 @@ def main():
     args = parser.parse_args()
     music_off = args.music_off
 
-    music_directory = "Music"
+    
 
     try:
         screen = pygame.display.set_mode((800, 600))
@@ -26,13 +26,7 @@ def main():
 
         model = Model(PlayerDatabase())
         view = View(screen, model)
-        controller = Controller(model, view)
-
-        # Play the game music on repeat.
-        if not music_off:
-            pygame.mixer.music.load(music_directory + "/photon_tracks_Track01.mp3")
-            pygame.mixer.music.set_volume(1)
-            pygame.mixer.music.play(-1, start=180)
+        controller = Controller(model, view, music_off)
 
         # Keep the window open until the player closes it.
         running = True

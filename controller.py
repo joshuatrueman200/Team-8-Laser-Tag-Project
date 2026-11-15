@@ -1,3 +1,6 @@
+from pathlib import Path
+import random
+
 import pygame
 from database import PlayerDatabaseError
 from udp_manager import UDPManager
@@ -12,18 +15,68 @@ class Controller:
     MAX_CODENAME_LENGTH = 15
 
     # Constructor
-    def __init__(self, model, view):
-        self.model = model
-        self.view = view
-        self.udp = UDPManager()
-        self.network_destination = self.udp.destination_ip
-        self.action_display = None
-        self.action_roster = {}
-        self.game_started = False
-        self.game_over_handled = False
-        self.last_traffic_sender = None
-        self.status = ""
-        self.pending_delete = None
+    def __init__(self, model, view, music_off=False):
+    self.model = model
+    self.view = view
+    self.udp = UDPManager()
+    self.network_destination = self.udp.destination_ip
+
+    self.action_display = None
+    self.action_roster = {}
+    self.game_started = False
+    self.game_over_handled = False
+    self.last_traffic_sender = None
+
+    self.status = ""
+    self.pending_delete = None
+
+    # Music settings
+    self.music_off = music_off
+    self.music_directory = Path(__file__).resolve().parent / "Music"
+    self.last_track = None
+
+    def start_music(self):
+    """Choose a random soundtrack when F5 starts the countdown."""
+
+    if self.music_off:
+        return None
+
+    tracks = [
+        self.music_directory / f"photon_tracks_Track{number:02d}.mp3"
+        for number in range(1, 9)
+    ]
+
+    # Only keep tracks that actually exist.
+    tracks = [track for track in tracks if track.is_file()]
+
+    if not tracks:
+        raise FileNotFoundError(
+            "No tracks found in Music/. "
+            "Expected photon_tracks_Track01.mp3 through "
+            "photon_tracks_Track08.mp3"
+        )
+    # Don't play the same song twice in a row.
+    choices = [
+        track for track in tracks
+        if track != self.last_track
+    ]
+
+    selected_track = random.choice(choices or tracks)
+
+    pygame.mixer.music.load(str(selected_track))
+    pygame.mixer.music.set_volume(1.0)
+    pygame.mixer.music.play()
+
+    self.last_track = selected_track
+
+    print(f"Playing: {selected_track.name}")
+
+    return selected_track.name
+
+    def stop_music(self):
+    if not self.music_off and pygame.mixer.get_init():
+        pygame.mixer.music.stop()
+
 
     def current_team_rows(self):
         # Return the list for the team on screen.
@@ -78,6 +131,7 @@ class Controller:
 
         # Transmit the equipment code that was just entered, not the player ID.
         try:
+            self.udp.open()
             self.udp.broadcast_equipment_code(current["hardware_id"])
         except OSError as error:
             self.status = f"Player saved, but UDP transmission failed: {error}"
@@ -226,6 +280,8 @@ class Controller:
                             ("green", self.model.green_rows),
                         )
                     }
+                    # If a prior match ended with F6, listen on 7501 again.
+                    self.udp.open()
                     self.action_display = PlayActionDisplay(team_rosters)
                     self.action_roster = roster_by_hardware(self.model)
                     self.last_traffic_sender = None
@@ -239,6 +295,16 @@ class Controller:
                         self.action_display = None
                 else:
                     self.status = "Play action countdown started; game begins in 30 seconds"
+                    try:
+                        selected_track = self.start_music()
+                        if selected_track is not None:
+                            self.status = (
+                                f"Countdown started - Track {selected_track} playing; "
+                                "game begins in 30 seconds"
+                            )
+                    except (OSError, pygame.error, FileNotFoundError) as error:
+                        # A missing audio file must not prevent playing a game.
+                        self.status = f"Countdown started, but music unavailable: {error}"
                 return
 
             if event.key == pygame.K_F12:
@@ -370,7 +436,10 @@ class Controller:
             self.status = "Returned to player entry"
         else:
             self.status = "Play action closed before game start"
+        self.stop_music()
         self.action_display.close()
+        # Release both UDP sockets. The next F5/registration opens them again.
+        self.udp.close()
         self.action_display = None
         self.action_roster = {}
         self.game_started = False
@@ -408,6 +477,7 @@ class Controller:
                     self.udp.start_game()
                 except OSError as error:
                     self.status = f"Unable to start traffic generator: {error}"
+                    self.stop_music()
                     self.action_display.close()
                     self.action_display = None
                     self.action_roster = {}
@@ -418,6 +488,7 @@ class Controller:
                     self.game_started = True
                     self.status = "Play action started; listening for tag events on UDP 7501"
             elif phase == "finished" and not self.game_over_handled:
+                self.stop_music()
                 if self.game_started:
                     errors = self._send_game_stop()
                     if errors:
