@@ -86,7 +86,7 @@ class PlayActionDisplay:
     def get_alert_image(self):
         # Load the alert picture once, sized to fill the window.
         if self.alert_image is None:
-            path = Path(__file__).resolve().parent / "countdown_images" / "alert.jpg"
+            path = Path(__file__).resolve().parent / "Images" / "alert.jpg"
             surface = pygame.image.load(str(path)).convert()
             surface = pygame.transform.smoothscale(surface, self.window.size)
             self.alert_image = Texture.from_surface(self.renderer, surface)
@@ -192,7 +192,7 @@ class PlayActionDisplay:
         """Show the teammate's countdownN.jpg sequence in this second window."""
         seconds = max(0, min(30, self.game_timer.remaining()))
         if self.countdown_frame != seconds:
-            image_path = Path(__file__).resolve().parent / "countdown_images" / f"countdown{seconds}.jpg"
+            image_path = Path(__file__).resolve().parent / "Images" / f"countdown{seconds}.jpg"
             surface = pygame.image.load(str(image_path)).convert()
             surface = pygame.transform.smoothscale(surface, self.window.size)
             # Keep only the current image on the GPU (not all 31 large photos).

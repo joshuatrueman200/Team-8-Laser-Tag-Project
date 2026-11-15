@@ -13,7 +13,7 @@ class View:
         self.col = 0
 
         # Load the game logo.
-        self.logo = pygame.image.load("Asset/logo.jpg")
+        self.logo = pygame.image.load("Images/logo.jpg")
         self.logo = pygame.transform.scale(self.logo, (500, 300))
 
         # Remember which screen to draw.
