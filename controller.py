@@ -16,66 +16,66 @@ class Controller:
 
     # Constructor
     def __init__(self, model, view, music_off=False):
-    self.model = model
-    self.view = view
-    self.udp = UDPManager()
-    self.network_destination = self.udp.destination_ip
+        self.model = model
+        self.view = view
+        self.udp = UDPManager()
+        self.network_destination = self.udp.destination_ip
 
-    self.action_display = None
-    self.action_roster = {}
-    self.game_started = False
-    self.game_over_handled = False
-    self.last_traffic_sender = None
+        self.action_display = None
+        self.action_roster = {}
+        self.game_started = False
+        self.game_over_handled = False
+        self.last_traffic_sender = None
 
-    self.status = ""
-    self.pending_delete = None
+        self.status = ""
+        self.pending_delete = None
 
-    # Music settings
-    self.music_off = music_off
-    self.music_directory = Path(__file__).resolve().parent / "Music"
-    self.last_track = None
+        # Music settings
+        self.music_off = music_off
+        self.music_directory = Path(__file__).resolve().parent / "Music"
+        self.last_track = None
 
     def start_music(self):
-    """Choose a random soundtrack when F5 starts the countdown."""
+        """Choose a random soundtrack when F5 starts the countdown."""
 
-    if self.music_off:
-        return None
+        if self.music_off:
+            return None
 
-    tracks = [
-        self.music_directory / f"photon_tracks_Track{number:02d}.mp3"
-        for number in range(1, 9)
-    ]
+        tracks = [
+            self.music_directory / f"photon_tracks_Track{number:02d}.mp3"
+            for number in range(1, 9)
+        ]
 
-    # Only keep tracks that actually exist.
-    tracks = [track for track in tracks if track.is_file()]
+        # Only keep tracks that actually exist.
+        tracks = [track for track in tracks if track.is_file()]
 
-    if not tracks:
-        raise FileNotFoundError(
-            "No tracks found in Music/. "
-            "Expected photon_tracks_Track01.mp3 through "
-            "photon_tracks_Track08.mp3"
-        )
-    # Don't play the same song twice in a row.
-    choices = [
-        track for track in tracks
-        if track != self.last_track
-    ]
+        if not tracks:
+            raise FileNotFoundError(
+                "No tracks found in Music/. "
+                "Expected photon_tracks_Track01.mp3 through "
+                "photon_tracks_Track08.mp3"
+            )
+        # Don't play the same song twice in a row.
+        choices = [
+            track for track in tracks
+            if track != self.last_track
+        ]
 
-    selected_track = random.choice(choices or tracks)
+        selected_track = random.choice(choices or tracks)
 
-    pygame.mixer.music.load(str(selected_track))
-    pygame.mixer.music.set_volume(1.0)
-    pygame.mixer.music.play()
+        pygame.mixer.music.load(str(selected_track))
+        pygame.mixer.music.set_volume(1.0)
+        pygame.mixer.music.play()
 
-    self.last_track = selected_track
+        self.last_track = selected_track
 
-    print(f"Playing: {selected_track.name}")
+        print(f"Playing: {selected_track.name}")
 
-    return selected_track.name
+        return selected_track.name
 
     def stop_music(self):
-    if not self.music_off and pygame.mixer.get_init():
-        pygame.mixer.music.stop()
+        if not self.music_off and pygame.mixer.get_init():
+            pygame.mixer.music.stop()
 
 
     def current_team_rows(self):
