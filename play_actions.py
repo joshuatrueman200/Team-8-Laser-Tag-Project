@@ -61,7 +61,8 @@ def decode_hit(packet, players):
                    scores_base=attacker[1] != BASE_TEAMS[parts[1]])
 
     target = players.get(parts[1])
-    if target is None:
+    if target is None or parts[0] == parts[1]:
+        # A player cannot be both people in a friendly-fire event.
         return None
     return Hit(attacker[0], target[0], attacker[1] == target[1],
                attacker_team=attacker[1], attacker_hardware_id=parts[0],

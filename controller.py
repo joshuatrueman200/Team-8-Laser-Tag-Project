@@ -3,7 +3,7 @@ import random
 
 import pygame
 from database import PlayerDatabaseError
-from udp_manager import UDPManager
+from udp_manager import CONTROL_CODES, UDPManager
 from play_actions import BASE_TARGETS, decode_hit, roster_by_hardware
 from play_action_display import PlayActionDisplay
 
@@ -26,6 +26,7 @@ class Controller:
         self.game_started = False
         self.game_over_handled = False
         self.last_traffic_sender = None
+        self.activated_hardware_ids = set()
 
         self.status = ""
         self.pending_delete = None
@@ -105,6 +106,9 @@ class Controller:
             base_name = BASE_TARGETS[current["hardware_id"]]
             self.status = f"Hardware ID is reserved for {base_name}"
             return
+        if current["hardware_id"] in CONTROL_CODES:
+            self.status = "Equipment ID is reserved for a UDP control message"
+            return
         # Each registered player must have a different piece of equipment.
         for team_rows in (self.model.red_rows, self.model.green_rows):
             for row in team_rows:
@@ -129,12 +133,24 @@ class Controller:
         else:
             self.status = f"Assigned {current['id']} ({current['codename']}) to {team}"
 
-        # Transmit the equipment code that was just entered, not the player ID.
-        try:
-            self.udp.open()
-            self.udp.broadcast_equipment_code(current["hardware_id"])
-        except OSError as error:
-            self.status = f"Player saved, but UDP transmission failed: {error}"
+        # Activate once per active roster assignment, after successful saving.
+        # The database player ID is never sent to the equipment.
+        hardware_id = current["hardware_id"]
+        if hardware_id not in self.activated_hardware_ids:
+            try:
+                self.udp.open()
+                self.udp.broadcast_equipment_code(hardware_id)
+            except (OSError, ValueError) as error:
+                self.status = f"Player saved, but UDP activation failed: {error}"
+            else:
+                self.activated_hardware_ids.add(hardware_id)
+        # Forget any equipment that is no longer on the roster (e.g. an edit).
+        registered_ids = {
+            row["hardware_id"]
+            for team_rows in (self.model.red_rows, self.model.green_rows)
+            for row in team_rows if row["id"] and row["hardware_id"]
+        }
+        self.activated_hardware_ids.intersection_update(registered_ids)
 
         if self.view.row < 14:
             self.view.row += 1
@@ -228,6 +244,12 @@ class Controller:
                         self.status = (
                             f"Deleted player {deleted_player[0]} ({deleted_player[1]}) from database"
                         )
+                        registered_ids = {
+                            row["hardware_id"]
+                            for team_rows in (self.model.red_rows, self.model.green_rows)
+                            for row in team_rows if row["id"] and row["hardware_id"]
+                        }
+                        self.activated_hardware_ids.intersection_update(registered_ids)
                     self.pending_delete = None
                 elif event.key in (pygame.K_n, pygame.K_ESCAPE):
                     self.pending_delete = None
@@ -309,6 +331,7 @@ class Controller:
 
             if event.key == pygame.K_F12:
                 self.model.clear_teams()
+                self.activated_hardware_ids.clear()
                 self.view.row = 0
                 self.view.col = 0
                 self.status =  "Game cleared"
@@ -457,6 +480,29 @@ class Controller:
                 errors.append(str(error))
         return errors
 
+    def _respond_to_hit(self, hit, sender_ip):
+        """Signal hit equipment OFF and acknowledge the traffic generator.
+
+        Only recognized player hits affect equipment. For friendly fire BOTH
+        the shooter and victim receive a shutdown ID; base hits only get 201.
+        """
+        if hit is not None and not hit.base_hit:
+            equipment_ids = [hit.target_hardware_id]
+            if hit.friendly_fire:
+                equipment_ids.append(hit.attacker_hardware_id)
+            for equipment_id in dict.fromkeys(equipment_ids):
+                try:
+                    self.udp.broadcast_equipment_code(equipment_id)
+                except (OSError, ValueError) as error:
+                    self.status = f"Unable to shut down equipment {equipment_id}: {error}"
+        try:
+            # The traffic generator requires TWO 201 replies for friendly fire.
+            self.udp.acknowledge_hit(
+                sender_ip, friendly_fire=hit.friendly_fire if hit else False
+            )
+        except OSError as error:
+            self.status = f"UDP acknowledgment error: {error}"
+
     def update(self):
         if self.action_display is not None:
             self.action_display.game_timer.update()
@@ -527,11 +573,7 @@ class Controller:
             if len(ids) != 2 or not all(value.isdecimal() for value in ids):
                 continue
             self.last_traffic_sender = address[0]
-            try:
-                self.udp.acknowledge_hit(address[0],
-                                         friendly_fire=hit.friendly_fire if hit else False)
-            except OSError as error:
-                self.status = f"UDP acknowledgment error: {error}"
+            self._respond_to_hit(hit, address[0])
 
         self.view.network_destination = self.network_destination
         self.view.status = self.status

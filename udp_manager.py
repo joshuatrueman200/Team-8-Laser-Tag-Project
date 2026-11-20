@@ -3,6 +3,10 @@
 import ipaddress
 import socket
 
+# These numeric messages are reserved by the Photon game protocol.
+# Equipment codes must not collide with acknowledgments/start/stop.
+CONTROL_CODES = frozenset(("201", "202", "221"))
+
 
 class UDPManager:
     RECEIVE_PORT = 7501
@@ -51,7 +55,15 @@ class UDPManager:
         self.send_socket.sendto(str(message).encode("ascii"), (ip, self.TRANSMIT_PORT))
 
     def broadcast_equipment_code(self, equipment_code):
-        self.send_message(equipment_code)
+        """Send a raw equipment ID on UDP 7500 (activation or hit shutdown).
+
+        The receiver interprets registrations as ON and hits as OFF. There is
+        deliberately no extra prefix so existing equipment accepts the ID.
+        """
+        code = str(equipment_code)
+        if not code.isdecimal() or code in CONTROL_CODES:
+            raise ValueError(f"Invalid/reserved equipment code: {code}")
+        self.send_message(code)
 
     def start_game(self):
         # The provided traffic generator does not start until it receives 202.
