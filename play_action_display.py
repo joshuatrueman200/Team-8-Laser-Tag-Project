@@ -47,6 +47,9 @@ class PlayActionDisplay:
         attacker = self.player_scores[hit.attacker_hardware_id]
         self.add_action(hit.label)
 
+        attack = pygame.mixer.Sound("Music/laser.mp3")
+        attack.play()
+
         if hit.base_hit:
             self.alert_start = pygame.time.get_ticks()
 
