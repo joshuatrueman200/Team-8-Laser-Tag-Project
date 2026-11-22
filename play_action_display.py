@@ -26,6 +26,7 @@ class PlayActionDisplay:
             for player in players
         }
         self.scores = {"red": 0, "green": 0}
+        self.tag_history = {}
         self.frozen = False
 
         # Use the teammate's countdown without changing the UDP/controller flow.
@@ -43,22 +44,34 @@ class PlayActionDisplay:
         self.actions.append(label)
         self.actions = self.actions[-self.max_actions:]
 
+
     def add_hit(self, hit):
         attacker = self.player_scores[hit.attacker_hardware_id]
-        self.add_action(hit.label)
+        # Limit each attacker to three consecutive tags against the same enemy.
+        if not hit.base_hit and not hit.friendly_fire:
+            attacker_id = hit.attacker_hardware_id
+            target_id = hit.target_hardware_id
+            last_target, count = self.tag_history.get(attacker_id, (None, 0))
 
+            if target_id == last_target:
+                if count >= 3:
+                    self.add_action(f"{hit.attacker} must tag a different enemy!")
+                    return False
+                self.tag_history[attacker_id] = (target_id, count + 1)
+            else:
+                self.tag_history[attacker_id] = (target_id, 1)
+        # Only accepted hits reach the normal scoring logic.
+        self.add_action(hit.label)
         attack = pygame.mixer.Sound("Music/laser.mp3")
         attack.play()
-
         if hit.base_hit:
             self.alert_start = pygame.time.get_ticks()
-
         if hit.base_hit and hit.scores_base:
             attacker["score"] += 100
             attacker["base_scored"] = True
             self.scores[hit.attacker_team] += 100
         elif hit.base_hit:
-            return
+            return True
         elif hit.friendly_fire:
             target = self.player_scores[hit.target_hardware_id]
             attacker["score"] -= 10
@@ -67,6 +80,9 @@ class PlayActionDisplay:
         else:
             attacker["score"] += 10
             self.scores[hit.attacker_team] += 10
+
+        return True
+
 
     def _draw_text(self, message, x, y, size=28, color=(235, 235, 235)):
         key = (message, size, color)
