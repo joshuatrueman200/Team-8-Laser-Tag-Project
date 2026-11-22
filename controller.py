@@ -196,12 +196,25 @@ class Controller:
                 self.stop_play_action()
             return
         if self.is_action_window_event(event):
+
             if event.key == pygame.K_F6:
                 if self.action_display.game_timer.phase == "finished":
                     self.stop_play_action()
+
+                    # Clear both teams for the next game.
+                    self.model.clear_teams()
+
+                    # Return to the first player entry slot.
+                    self.view.player_entry_screen = True
+                    self.view.current_team = "red"
+                    self.view.row = 0
+                    self.view.col = 0
+
+                    self.status = "Returned to player entry; teams cleared"
                 else:
                     self.status = "F6 returns to player entry after the game ends"
-            return
+
+                return
 
         # Only handle roster keys on the player entry screen.
         if self.view.player_entry_screen:
@@ -557,8 +570,12 @@ class Controller:
                 continue
             hit = decode_hit(data, self.action_roster)
             if hit is not None:
-                self.action_display.add_hit(hit)
-                print(f"TAG: {hit.label}")
+                accepted = self.action_display.add_hit(hit)
+                if accepted:
+                    print(f"TAG: {hit.label}")
+                else:
+                    print(f"TAG LIMIT: {hit.label} ignored")
+                    hit = None
             else:
                 # Ignore malformed packets and unknown hardware IDs.
                 # Known base targets (43/53) are displayed by decode_hit().
