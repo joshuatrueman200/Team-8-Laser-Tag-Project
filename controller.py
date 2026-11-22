@@ -203,7 +203,6 @@ class Controller:
 
                     # Clear both teams for the next game.
                     self.model.clear_teams()
-                    self._refresh_added_rows()
 
                     # Return to the first player entry slot.
                     self.view.player_entry_screen = True
