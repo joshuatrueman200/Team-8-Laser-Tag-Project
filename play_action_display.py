@@ -45,6 +45,10 @@ class PlayActionDisplay:
 
     def add_hit(self, hit):
         attacker = self.player_scores[hit.attacker_hardware_id]
+        # Each player can score the opposing team's base only once.
+        if hit.base_hit and hit.scores_base and attacker["base_scored"]:
+            self.add_action(f"{hit.attacker} already scored a base hit!")
+            return False
         self.add_action(hit.label)
 
         if hit.base_hit:
