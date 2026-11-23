@@ -3,17 +3,21 @@
 import ipaddress
 import socket
 
+# These numeric messages are reserved by the Photon game protocol.
+# Equipment codes must not collide with acknowledgments/start/stop.
+CONTROL_CODES = frozenset(("201", "202", "221"))
+
 
 class UDPManager:
     RECEIVE_PORT = 7501
     TRANSMIT_PORT = 7500
 
     def __init__(self, destination_ip="127.0.0.1"):
-    self.receive_socket = None
-    self.send_socket = None
+        self.receive_socket = None
+        self.send_socket = None
 
-    self.change_network(destination_ip)
-    self.open()
+        self.change_network(destination_ip)
+        self.open()
 
     def change_network(self, destination_ip):
         """Change only the destination for outgoing packets, not the listening IP."""
@@ -23,27 +27,27 @@ class UDPManager:
         self.destination_ip = str(address)
 
     def open(self):
-    """Open the UDP sockets if they are currently closed."""
+        """Open the UDP sockets if they are currently closed."""
 
-    if self.receive_socket is not None or self.send_socket is not None:
-        return
+        if self.receive_socket is not None or self.send_socket is not None:
+            return
 
-    try:
-        self.receive_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            self.receive_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-        self.receive_socket.bind(("0.0.0.0", self.RECEIVE_PORT))
-        self.receive_socket.setblocking(False)
+            self.receive_socket.bind(("0.0.0.0", self.RECEIVE_PORT))
+            self.receive_socket.setblocking(False)
 
-        self.send_socket.setsockopt(
-            socket.SOL_SOCKET,
-            socket.SO_BROADCAST,
-            1
-        )
+            self.send_socket.setsockopt(
+                socket.SOL_SOCKET,
+                socket.SO_BROADCAST,
+                1
+            )
 
-    except OSError:
-        self.close()
-        raise
+        except OSError:
+            self.close()
+            raise
 
 
     def send_message(self, message, destination_ip=None):
@@ -51,7 +55,15 @@ class UDPManager:
         self.send_socket.sendto(str(message).encode("ascii"), (ip, self.TRANSMIT_PORT))
 
     def broadcast_equipment_code(self, equipment_code):
-        self.send_message(equipment_code)
+        """Send a raw equipment ID on UDP 7500 (activation or hit shutdown).
+
+        The receiver interprets registrations as ON and hits as OFF. There is
+        deliberately no extra prefix so existing equipment accepts the ID.
+        """
+        code = str(equipment_code)
+        if not code.isdecimal() or code in CONTROL_CODES:
+            raise ValueError(f"Invalid/reserved equipment code: {code}")
+        self.send_message(code)
 
     def start_game(self):
         # The provided traffic generator does not start until it receives 202.

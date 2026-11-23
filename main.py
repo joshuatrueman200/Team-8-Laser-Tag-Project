@@ -16,9 +16,8 @@ def main():
     # Purely for testing purposes
     parser.add_argument("--music_off", action="store_true", help = "Place to shut off music ingame")
     args = parser.parse_args()
-    music_off = args.music_off
 
-    
+    music_off = args.music_off
 
     try:
         screen = pygame.display.set_mode((800, 600))

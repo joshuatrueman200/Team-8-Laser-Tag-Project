@@ -3,7 +3,7 @@ import random
 
 import pygame
 from database import PlayerDatabaseError
-from udp_manager import UDPManager
+from udp_manager import CONTROL_CODES, UDPManager
 from play_actions import BASE_TARGETS, decode_hit, roster_by_hardware
 from play_action_display import PlayActionDisplay
 
@@ -16,66 +16,67 @@ class Controller:
 
     # Constructor
     def __init__(self, model, view, music_off=False):
-    self.model = model
-    self.view = view
-    self.udp = UDPManager()
-    self.network_destination = self.udp.destination_ip
+        self.model = model
+        self.view = view
+        self.udp = UDPManager()
+        self.network_destination = self.udp.destination_ip
 
-    self.action_display = None
-    self.action_roster = {}
-    self.game_started = False
-    self.game_over_handled = False
-    self.last_traffic_sender = None
+        self.action_display = None
+        self.action_roster = {}
+        self.game_started = False
+        self.game_over_handled = False
+        self.last_traffic_sender = None
+        self.activated_hardware_ids = set()
 
-    self.status = ""
-    self.pending_delete = None
+        self.status = ""
+        self.pending_delete = None
 
-    # Music settings
-    self.music_off = music_off
-    self.music_directory = Path(__file__).resolve().parent / "Music"
-    self.last_track = None
+        # Music settings
+        self.music_off = music_off
+        self.music_directory = Path(__file__).resolve().parent / "Music"
+        self.last_track = None
 
     def start_music(self):
-    """Choose a random soundtrack when F5 starts the countdown."""
+        """Choose a random soundtrack when F5 starts the countdown."""
 
-    if self.music_off:
-        return None
+        if self.music_off:
+            return None
 
-    tracks = [
-        self.music_directory / f"photon_tracks_Track{number:02d}.mp3"
-        for number in range(1, 9)
-    ]
+        tracks = [
+            self.music_directory / f"photon_tracks_Track{number:02d}.mp3"
+            for number in range(1, 9)
+        ]
 
-    # Only keep tracks that actually exist.
-    tracks = [track for track in tracks if track.is_file()]
+        # Only keep tracks that actually exist.
+        tracks = [track for track in tracks if track.is_file()]
 
-    if not tracks:
-        raise FileNotFoundError(
-            "No tracks found in Music/. "
-            "Expected photon_tracks_Track01.mp3 through "
-            "photon_tracks_Track08.mp3"
-        )
-    # Don't play the same song twice in a row.
-    choices = [
-        track for track in tracks
-        if track != self.last_track
-    ]
+        if not tracks:
+            raise FileNotFoundError(
+                "No tracks found in Music/. "
+                "Expected photon_tracks_Track01.mp3 through "
+                "photon_tracks_Track08.mp3"
+            )
+        # Don't play the same song twice in a row.
+        choices = [
+            track for track in tracks
+            if track != self.last_track
+        ]
 
-    selected_track = random.choice(choices or tracks)
+        selected_track = random.choice(choices or tracks)
 
-    pygame.mixer.music.load(str(selected_track))
-    pygame.mixer.music.set_volume(1.0)
-    pygame.mixer.music.play()
+        pygame.mixer.music.load(str(selected_track))
+        pygame.mixer.music.set_volume(1.0)
+        pygame.mixer.music.play()
 
-    self.last_track = selected_track
+        self.last_track = selected_track
 
-    print(f"Playing: {selected_track.name}")
+        print(f"Playing: {selected_track.name}")
 
-    return selected_track.name
+        return selected_track.name
 
     def stop_music(self):
-    if not self.music_off and pygame.mixer.get_init():
-        pygame.mixer.music.stop()
+        if not self.music_off and pygame.mixer.get_init():
+            pygame.mixer.music.stop()
 
 
     def current_team_rows(self):
@@ -105,6 +106,9 @@ class Controller:
             base_name = BASE_TARGETS[current["hardware_id"]]
             self.status = f"Hardware ID is reserved for {base_name}"
             return
+        if current["hardware_id"] in CONTROL_CODES:
+            self.status = "Equipment ID is reserved for a UDP control message"
+            return
         # Each registered player must have a different piece of equipment.
         for team_rows in (self.model.red_rows, self.model.green_rows):
             for row in team_rows:
@@ -129,12 +133,24 @@ class Controller:
         else:
             self.status = f"Assigned {current['id']} ({current['codename']}) to {team}"
 
-        # Transmit the equipment code that was just entered, not the player ID.
-        try:
-            self.udp.open()
-            self.udp.broadcast_equipment_code(current["hardware_id"])
-        except OSError as error:
-            self.status = f"Player saved, but UDP transmission failed: {error}"
+        # Activate once per active roster assignment, after successful saving.
+        # The database player ID is never sent to the equipment.
+        hardware_id = current["hardware_id"]
+        if hardware_id not in self.activated_hardware_ids:
+            try:
+                self.udp.open()
+                self.udp.broadcast_equipment_code(hardware_id)
+            except (OSError, ValueError) as error:
+                self.status = f"Player saved, but UDP activation failed: {error}"
+            else:
+                self.activated_hardware_ids.add(hardware_id)
+        # Forget any equipment that is no longer on the roster (e.g. an edit).
+        registered_ids = {
+            row["hardware_id"]
+            for team_rows in (self.model.red_rows, self.model.green_rows)
+            for row in team_rows if row["id"] and row["hardware_id"]
+        }
+        self.activated_hardware_ids.intersection_update(registered_ids)
 
         if self.view.row < 14:
             self.view.row += 1
@@ -180,12 +196,25 @@ class Controller:
                 self.stop_play_action()
             return
         if self.is_action_window_event(event):
+
             if event.key == pygame.K_F6:
                 if self.action_display.game_timer.phase == "finished":
                     self.stop_play_action()
+
+                    # Clear both teams for the next game.
+                    self.model.clear_teams()
+
+                    # Return to the first player entry slot.
+                    self.view.player_entry_screen = True
+                    self.view.current_team = "red"
+                    self.view.row = 0
+                    self.view.col = 0
+
+                    self.status = "Returned to player entry; teams cleared"
                 else:
                     self.status = "F6 returns to player entry after the game ends"
-            return
+
+                return
 
         # Only handle roster keys on the player entry screen.
         if self.view.player_entry_screen:
@@ -228,6 +257,12 @@ class Controller:
                         self.status = (
                             f"Deleted player {deleted_player[0]} ({deleted_player[1]}) from database"
                         )
+                        registered_ids = {
+                            row["hardware_id"]
+                            for team_rows in (self.model.red_rows, self.model.green_rows)
+                            for row in team_rows if row["id"] and row["hardware_id"]
+                        }
+                        self.activated_hardware_ids.intersection_update(registered_ids)
                     self.pending_delete = None
                 elif event.key in (pygame.K_n, pygame.K_ESCAPE):
                     self.pending_delete = None
@@ -309,6 +344,7 @@ class Controller:
 
             if event.key == pygame.K_F12:
                 self.model.clear_teams()
+                self.activated_hardware_ids.clear()
                 self.view.row = 0
                 self.view.col = 0
                 self.status =  "Game cleared"
@@ -457,6 +493,29 @@ class Controller:
                 errors.append(str(error))
         return errors
 
+    def _respond_to_hit(self, hit, sender_ip):
+        """Signal hit equipment OFF and acknowledge the traffic generator.
+
+        Only recognized player hits affect equipment. For friendly fire BOTH
+        the shooter and victim receive a shutdown ID; base hits only get 201.
+        """
+        if hit is not None and not hit.base_hit:
+            equipment_ids = [hit.target_hardware_id]
+            if hit.friendly_fire:
+                equipment_ids.append(hit.attacker_hardware_id)
+            for equipment_id in dict.fromkeys(equipment_ids):
+                try:
+                    self.udp.broadcast_equipment_code(equipment_id)
+                except (OSError, ValueError) as error:
+                    self.status = f"Unable to shut down equipment {equipment_id}: {error}"
+        try:
+            # The traffic generator requires TWO 201 replies for friendly fire.
+            self.udp.acknowledge_hit(
+                sender_ip, friendly_fire=hit.friendly_fire if hit else False
+            )
+        except OSError as error:
+            self.status = f"UDP acknowledgment error: {error}"
+
     def update(self):
         if self.action_display is not None:
             self.action_display.game_timer.update()
@@ -511,8 +570,12 @@ class Controller:
                 continue
             hit = decode_hit(data, self.action_roster)
             if hit is not None:
-                self.action_display.add_hit(hit)
-                print(f"TAG: {hit.label}")
+                accepted = self.action_display.add_hit(hit)
+                if accepted:
+                    print(f"TAG: {hit.label}")
+                else:
+                    print(f"TAG LIMIT: {hit.label} ignored")
+                    hit = None
             else:
                 # Ignore malformed packets and unknown hardware IDs.
                 # Known base targets (43/53) are displayed by decode_hit().
@@ -527,11 +590,7 @@ class Controller:
             if len(ids) != 2 or not all(value.isdecimal() for value in ids):
                 continue
             self.last_traffic_sender = address[0]
-            try:
-                self.udp.acknowledge_hit(address[0],
-                                         friendly_fire=hit.friendly_fire if hit else False)
-            except OSError as error:
-                self.status = f"UDP acknowledgment error: {error}"
+            self._respond_to_hit(hit, address[0])
 
         self.view.network_destination = self.network_destination
         self.view.status = self.status
