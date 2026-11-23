@@ -17,6 +17,7 @@ cd ~/laser-tag
 git clone https://github.com/joshuatrueman200/Team-8-Laser-Tag-Project.git
 cd Team-8-Laser-Tag-Project
 bash setup_vm.sh
+python3 main.py
 ```
 
 ## View players
